@@ -33,7 +33,7 @@ module.exports = class Autolevel {
                         z: prb[2] - this.wco.z
                     };
                     this.probedPoints.push(pt)
-                    console.log("probed " + this.probedPoints.length  + "/" +  this.planedPointCount + ">", pt);
+                    console.log("probed " + this.probedPoints.length  + "/" +  this.planedPointCount + ">", pt.x.toFixed(3),pt.y.toFixed(3),pt.z.toFixed(3));
                 }
             }
         });
