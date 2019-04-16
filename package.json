@@ -1,0 +1,17 @@
+{
+  "name": "cncjs-kt-ext",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "gcode-toolpath": "^2.2.0",
+    "jsonwebtoken": "^8.5.1",
+    "lodash.get": "^4.4.2",
+    "socket.io-client": "^2.2.0"
+  }
+}
