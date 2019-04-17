@@ -1,5 +1,6 @@
 const io = require('socket.io-client');
 const SocketWrap = require('./socketwrap');
+
 module.exports = class Autolevel {
     constructor(socket,options) {
         this.gcodeFileName='';
@@ -16,7 +17,7 @@ module.exports = class Autolevel {
             y:0,
             z:0
         };
-        socket.on('gcode:load', function(file,gc) {
+        socket.on('gcode:load', (file,gc) => {
              this.gcodeFileName=file;
              this.gcode=gc;
              console.log("gcode loaded:", file);
@@ -34,6 +35,9 @@ module.exports = class Autolevel {
                     };
                     this.probedPoints.push(pt)
                     console.log("probed " + this.probedPoints.length  + "/" +  this.planedPointCount + ">", pt.x.toFixed(3),pt.y.toFixed(3),pt.z.toFixed(3));
+                    if(this.probedPoints.length >= this.planedPointCount) {
+                        this.applyCompensation();
+                    }
                 }
             }
         });
@@ -79,6 +83,108 @@ module.exports = class Autolevel {
             }
         }
         this.sckw.sendGcode(code.join('\n'));
+     }
+
+     stripComments(line) {
+        const re1 = new RegExp(/\s*\([^\)]*\)/g); // Remove anything inside the parentheses
+        const re2 = new RegExp(/\s*;.*/g); // Remove anything after a semi-colon to the end of the line, including preceding spaces
+        const re3 = new RegExp(/\s+/g);
+        return (line.replace(re1, '').replace(re2, '').replace(re3, ''));
+    };
+
+    distanceSquared(p1, p2) {
+        return (p2.x-p1.x)*(p2.x-p1.x) + (p2.y-p1.y)*(p2.y-p1.y) +  (p2.z-p1.z)*(p2.z-p1.z);
+    }
+
+    crossProduct3(u, v) {
+        return {
+        x : (u.y * v.z - u.z * v.y),
+        y : -(u.x * v.z - u.z * v.x),
+        z : (u.x * v.y - u.y * v.y)
+        }
+    }
+
+    sub3(p1,p2) {
+        return  {x: p1.x-p2.x, y:p1.y-p2.y, z:p1.z-p2.z };
+    }
+
+
+    splitToSegments(p1,p2)  {
+        let res = [];
+        let v = this.sub3(p2,p1); // delta
+        let dist = Math.sqrt(this.distanceSquared(p1,p2)); // distance
+        let dir = {x: v.x / dist,  y: v.y / dist, z:v.z/dist } ; // direction vector
+        res.push({x:p1.x,y:p1.y,z:p1.z}); // first point
+        for(let d=this.delta;d<dist;d+=delta) {
+            res.push({x: pt1.x + dir.x * d, y: pt1.y + dir.y*d,z: pt1.z + dir.z*d } ); // mid points
+        }
+        res.push({x:p2.x,y:p2.y, z:p2.z}); // last point
+        return res;
+    }
+
+    getThreeClosestPoints(pt)  {
+        let res = [];
+        if (this.probedPoints.length < 3) return res;
+        this.probedPoints.sort((a, b) => {
+            return distanceSquared(a, pt) < distanceSquared(b, pt) ? -1 : 1
+        });
+        for (let i = 0; i < 3; i++) res.push(this.probedPoints[i]);
+        return res;
+    }
+
+    compensateZCoord(pt) {
+        let points = this.getThreeClosestPoints(pt);
+        if(points.length<3) return pt.z;
+        let normal=this.crossProduct3(this.sub3(points[1], points[0]), this.sub3(points[2], points[0]));
+        let pp = points[0]; // point on plane
+        let dz =0; // compensation delta
+        if (normal.z != 0) {
+            // find z at the point seg, on the plane defined by three points
+            dz = pp.z - (normal.x * (pt.x - pp.x) + normal.y * (pt.y - pp.y)) / normal.z;
+        } else {
+            console.log("normal.z is zero")
+        }
+        return { x:pt.x, y:pt.y, z:pt.z + dz}
+    }
+
+     applyCompensation() {
+         console.log("apply leveling");
+         let lines = this.gcode.split('\n');
+         let p0 = {x:0,y:0,z:0};
+         let pt = {x:0,y:0,z:0};
+
+         let abs=true;
+         let result = [];
+         lines.forEach(line => {
+            lineStripped=stripComments(line);
+            if (!/(X|Y|Z)/g.test(lineStripped))  result.push(lineStripped);// no coordinate change --> copy to output
+            else if (/(G38.+|G5.+|G10|G2.+|G4.+|G92|G92.1)/g.test(lineStripped))  result.push(lineStripped);// skip compensation for these G-Codes
+            else {
+                if(/G91/.test(lineStripped)) abs=false;
+                if(/G90/.test(lineStripped)) abs=true;
+                let xMatch=/X([\.\+\-\d]+)/g.exec(lineStripped);
+                if(xMatch) pt.x=parseFloat(xMatch[2]);
+
+                let yMatch=/Y([\.\+\-\d]+)/g.exec(lineStripped);
+                if(yMatch) pt.y=parseFloat(yMatch[2]);
+
+                let zMatch=/Z([\.\+\-\d]+)/g.exec(lineStripped);
+                if(zMatch) pt.z=parseFloat(zMatch[2]);
+
+              	// strip coordinates
+                lineStripped = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/g, "");
+
+                let segs=this.splitToSegments(p0, pt);
+                for(let seg of segs) {
+                    if(abs) pt=this.compensateZCoord(seg);
+                    let newLine=lineStripped + ` X${pt.x.toFixed(3)} Y${pt.y.toFixed(3)} Z${pt.z.toFixed(3)}`;
+                    result.push(newLine.trim())
+                }
+                p0 = {x:pt.x, y:pt.y, z:pt.z}; // clone
+            }
+         });
+         this.sckw.loadGcode("AUTOLEVELLED:" + this.gcodeFileName, result.join('\n'));
+         console.log("Leveling applied");
      }
 }
 
