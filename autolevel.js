@@ -36,7 +36,7 @@ module.exports = class Autolevel {
             if(data.indexOf("PRB")>=0) {
                 let prbm = /\[PRB:([\+\-\.\d]+),([\+\-\.\d]+),([\+\-\.\d]+),?([\+\-\.\d]+)?:(\d)\]/g.exec(data);
                 if (prbm) {
-                    let prb = [parseFloat(prbm[1]), parseFloat(prbm[2]), parseFloat(prbm[3]), parseFloat(prbm[4])]
+                    let prb = [parseFloat(prbm[1]), parseFloat(prbm[2]), parseFloat(prbm[3])]
                     let pt = {
                         x: prb[0] - this.wco.x,
                         y: prb[1] - this.wco.y,
