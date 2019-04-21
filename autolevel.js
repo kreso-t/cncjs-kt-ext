@@ -238,7 +238,7 @@ module.exports = class Autolevel {
                         }
                 } else {
                     result.push(lineStripped);
-                    console.log("WARNING: using relative mode may produce correct results")
+                    console.log("WARNING: using relative mode may not produce correct results")
                 }
                 p0 = {x:pt.x, y:pt.y, z:pt.z}; // clone
             }
