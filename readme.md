@@ -1,7 +1,7 @@
 **Auto-leveling extension for CNCjs**
 
-CNCjs Auto-leveling extension intended to be used primarily for PCB isolation milling.
-Currently only Grbl is supported/tested (it may work with other controllers but I did not test it)
+CNCjs Auto-leveling extension intended to be used primarily for PCB isolation milling. Currently only Grbl is supported/tested.
+
 It will probe the surface (within gcode boundaries (xmin,ymin) - (xmax,ymax)) and transform the gcode currently loaded to cncjs.
 
 * How to install and run:
