@@ -28,7 +28,7 @@ once it receive the #autolevel command it will execute the probing and transform
     ```
     (#autolevel)
     ```
-    without any options it will probe every 10mm, with travel height at 2mm, and feedrate 50mm/min
+    without any options it will probe every 10mm, with travel height at 2mm, and probing feedrate 50mm/min
     
     please note that this command will be ignored when put inside the gcode file, you must run it  either as Macro or type it into the Console.
 
