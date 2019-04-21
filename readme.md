@@ -2,7 +2,7 @@
 
 CNCjs Auto-leveling extension intended to be used primarily for PCB isolation milling. Currently only Grbl is supported/tested.
 
-It will probe the surface (within gcode boundaries (xmin,ymin) - (xmax,ymax)) and transform the gcode currently loaded to cncjs and load auto-levelled gcode into CNCjs, ready to be run.
+It will probe the surface (within gcode boundaries (xmin,ymin) - (xmax,ymax)) and transform the gcode currently loaded to cncjs and load auto-leveled gcode into CNCjs, ready to be run.
 
 * How to install and run:
 ```
@@ -19,7 +19,7 @@ to see the other possible start options use:
     node . --help
 ```
 
-once it receive the #autolevel command it will execute the probing and transform the gcode
+once it receives the #autolevel command it will execute the probing and transform the gcode
 
 * How to use:
     
