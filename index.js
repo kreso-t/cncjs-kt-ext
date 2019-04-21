@@ -1,11 +1,52 @@
 #!/usr/bin/env node
-
+const program = require('commander');
+const pkg = require('./package.json');
 const fs = require('fs');
 const path = require('path');
 const io = require('socket.io-client');
 const jwt = require('jsonwebtoken');
 const get = require('lodash.get');
 const Autolevel = require('./autolevel.js');
+
+
+
+program
+	.version(pkg.version)
+	.usage('-s <secret> -p <port> [options]')
+	.option('-l, --list', 'list available ports then exit')
+    .option('-s, --secret', 'the secret key stored in the ~/.cncrc file')
+	.option('-p, --port <port>', 'path or name of serial port')
+	.option('-b, --baudrate <baudrate>', 'baud rate (default: 115200)', 115200)
+	.option('--socket-address <address>', 'socket address or hostname (default: localhost)', 'localhost')
+	.option('--socket-port <port>', 'socket port (default: 8000)', 8000)
+	.option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG (default: Grbl)', 'Grbl')
+    .option('--access-token-lifetime <lifetime>', 'access token lifetime in seconds or a time span string (default: 30d)', '30d')
+
+program.parse(process.argv);
+
+var options = {
+    secret: program.secret || process.env['CNCJS_SECRET'],
+    port: program.port || "/dev/ttyACM0",
+    baudrate: program.baudrate || 115200,
+    socketAddress: program.socketAddress || 'localhost',
+    socketPort: program.socketPort || 8000,
+    controllerType: program.controllerType ||  'Grbl',
+    accessTokenLifetime: program.accessTokenLifetime || '30d'
+};
+
+if (options.list) {
+	serialport.list(function(err, ports) {
+		if (err) {
+			console.error(err);
+			process.exit(1);
+		}
+		ports.forEach(function(port) {
+			console.log(port.comName);
+		});
+	});
+	return;
+}
+
 
 const generateAccessToken = function(payload, secret, expiration) {
     const token = jwt.sign(payload, secret, {
@@ -20,14 +61,6 @@ const getUserHome = function() {
     return process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'];
 };
 
-var options = options || {};
-options.port = "/dev/ttyACM0";
-options.secret = get(options, 'secret', process.env['CNCJS_SECRET']);
-options.baudrate = get(options, 'baudrate', 115200);
-options.socketAddress = get(options, 'socketAddress', 'localhost');
-options.socketPort = get(options, 'socketPort', 8000);
-options.controllerType = get(options, 'controllerType', 'Grbl');
-options.accessTokenLifetime = get(options, 'accessTokenLifetime', '30d');
 
 if (!options.secret) {
     const cncrc = path.resolve(getUserHome(), '.cncrc');
@@ -80,12 +113,6 @@ socket.on('serialport:open', function(options) {
 socket.on('serialport:error', function(options) {
     callback(new Error('Error opening serial port "' + options.port + '"'));
 });
-
-
-// var onevent =socket.onevent;
-// socket.onevent = function(packet, args) {
-//     console.log(JSON.stringify(packet,null,4));
-// }
 
 
 function callback(err, socket) {

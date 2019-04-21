@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "commander": "^2.20.0",
     "gcode-toolpath": "^2.2.0",
     "jsonwebtoken": "^8.5.1",
     "lodash.get": "^4.4.2",
