@@ -6,7 +6,7 @@ It will probe the surface (within gcode boundaries (xmin,ymin) - (xmax,ymax)) an
 
 * How to install and run:
 ```
-    git clone <>
+    git clone https://github.com/kreso-t/cncjs-kt-ext.git
     cd cncjs-kt-ext
     npm install
     npm start
