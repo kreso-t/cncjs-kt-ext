@@ -36,7 +36,7 @@ If you want to customize the probing distance, height and feedrate you may use t
 ```
 (#autolevel D15.0 H5.0 F20)
 ```
-this will instruct to use probing distance of 15mm, travel height 5mm and feedrate 20.0
+this will instruct to use probing distance of 15mm, travel height 5mm and feedrate 20.0 mm/min
 
 
 
