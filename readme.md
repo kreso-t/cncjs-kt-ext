@@ -14,9 +14,9 @@ It will probe the surface (within gcode boundaries (xmin,ymin) - (xmax,ymax)) an
 
 once started it will (by default) connect to local cncjs server and port '/dev/ttyACM0' and register it self for listening and sending commands (similar way as i.e. cncjs keyboard pendant)
 
-to see the possible start options use:
+to see the other possible start options use:
 ```
-    npm start --help
+    node . --help
 ```
 
 once it receive the #autolevel command it will execute the probing and transform the gcode
