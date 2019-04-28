@@ -42,10 +42,13 @@ module.exports = class Autolevel {
             y: prb[1] - this.wco.y,
             z: prb[2] - this.wco.z
           }
-          this.probedPoints.push(pt)
-          console.log('probed ' + this.probedPoints.length + '/' + this.planedPointCount + '>', pt.x.toFixed(3), pt.y.toFixed(3), pt.z.toFixed(3))
-          if (this.probedPoints.length >= this.planedPointCount) {
-            this.applyCompensation()
+          if (this.planedPointCount > 0) {
+            this.probedPoints.push(pt)
+            console.log('probed ' + this.probedPoints.length + '/' + this.planedPointCount + '>', pt.x.toFixed(3), pt.y.toFixed(3), pt.z.toFixed(3))
+            if (this.probedPoints.length >= this.planedPointCount) {
+              this.applyCompensation()
+              this.planedPointCount = 0
+            }
           }
         }
       }
