@@ -98,7 +98,7 @@ socket.on('serialport:error', function (options) {
 function callback (err, socket) {
   let autolevel = new Autolevel(socket, options)
   socket.on('serialport:write', function (data, context) {
-    if (data.indexOf('#autolevel') >= 0) {
+    if (data.indexOf('#autolevel') >= 0 && context && context.source === 'feeder') {
       autolevel.start(data, context)
     }
   })
