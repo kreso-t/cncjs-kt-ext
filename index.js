@@ -11,23 +11,34 @@ program
   .version(pkg.version)
   .usage('-s <secret> -p <port> [options]')
   .option('-s, --secret', 'the secret key stored in the ~/.cncrc file')
-  .option('-p, --port <port>', 'path or name of serial port')
-  .option('-b, --baudrate <baudrate>', 'baud rate (default: 115200)', 115200)
-  .option('--socket-address <address>', 'socket address or hostname (default: localhost)', 'localhost')
-  .option('--socket-port <port>', 'socket port (default: 8000)', 8000)
-  .option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG (default: Grbl)', 'Grbl')
-  .option('--access-token-lifetime <lifetime>', 'access token lifetime in seconds or a time span string (default: 30d)', '30d')
+  .option('-p, --port <port>', 'path or name of serial port', '')
+  .option('-b, --baudrate <baudrate>', 'baud rate (default: 115200)', 0)
+  .option('-c, --config <filename>', 'set the config file (deafult: ~/.cncrc)', '')
+  .option('--socket-address <address>', 'socket address or hostname (default: localhost)', '')
+  .option('--socket-port <port>', 'socket port (default: 8000)', '')
+  .option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG (default: Grbl)', '')
+  .option('--access-token-lifetime <lifetime>', 'access token lifetime in seconds or a time span string (default: 30d)', '')
 
 program.parse(process.argv)
 
 var options = {
-  secret: program.secret || process.env['CNCJS_SECRET'],
-  port: program.port || '/dev/ttyACM0',
-  baudrate: program.baudrate || 115200,
-  socketAddress: program.socketAddress || 'localhost',
-  socketPort: program.socketPort || 8000,
-  controllerType: program.controllerType || 'Grbl',
-  accessTokenLifetime: program.accessTokenLifetime || '30d'
+  secret: program.secret,
+  port: program.port,
+  baudrate: program.baudrate,
+  socketAddress: program.socketAddress,
+  socketPort: program.socketPort,
+  controllerType: program.controllerType,
+  accessTokenLifetime: program.accessTokenLifetime
+}
+
+var defaults = {
+  secret: process.env['CNCJS_SECRET'],
+  port: '/dev/ttyACM0',
+  baudrate: 115200,
+  socketAddress: 'localhost',
+  socketPort: 8000,
+  controllerType: 'Grbl',
+  accessTokenLifetime: '30d'
 }
 
 const generateAccessToken = function (payload, secret, expiration) {
@@ -43,10 +54,42 @@ const getUserHome = function () {
   return process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME']
 }
 
+const cncrc = (program.config)? program.config: path.resolve(getUserHome(), '.cncrc')
+var config
+
+Object.keys(options).forEach((key) => {
+    if(!options[key]) {
+        options[key] = defaults[key]
+    }
+})
+
+if(program.config) {
+    config = JSON.parse(fs.readFileSync(cncrc, 'utf8'))
+    
+    if(!program.port) {
+        if(config.hasOwnProperty('ports') && config.ports[0] && config.ports[0].comName) {
+            options.port = config.ports[0].comName
+        }
+    }
+
+    if(!program.baudrate) {
+        if(config.hasOwnProperty('baudrates') && config.baudrates[0]) {
+            options.baudrate = config.baudrates[0]
+        }
+    }
+
+    if(!program.controllerType) {
+        if(config.hasOwnProperty('controller')) {
+            options.controllerType = config.controller
+        }
+    }
+}
+
 if (!options.secret) {
-  const cncrc = path.resolve(getUserHome(), '.cncrc')
   try {
-    const config = JSON.parse(fs.readFileSync(cncrc, 'utf8'))
+    if(!config) {
+        config = JSON.parse(fs.readFileSync(cncrc, 'utf8'))
+    }
     options.secret = config.secret
   } catch (err) {
     console.error(err)
