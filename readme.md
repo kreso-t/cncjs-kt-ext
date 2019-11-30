@@ -9,10 +9,10 @@ It will probe the surface (within gcode boundaries (xmin,ymin) - (xmax,ymax)) an
     git clone https://github.com/kreso-t/cncjs-kt-ext.git
     cd cncjs-kt-ext
     npm install
-    npm start
+    node . --port /dev/ttyACM0
 ```
 
-once started it will (by default) connect to local cncjs server and port '/dev/ttyACM0' and register it self for listening and sending commands (similar way as i.e. cncjs keyboard pendant)
+once started it will (by default) connect to local cncjs server and register it self for listening and sending commands (similar way as i.e. cncjs keyboard pendant)
 
 to see the other possible start options use:
 ```
@@ -36,8 +36,8 @@ once it receives the #autolevel command it will execute the probing and transfor
 
 If you want to customize the probing distance, height and feedrate you may use the following syntax:
 ```
-(#autolevel D15.0 H5.0 F20)
+(#autolevel D7.5 H1.0 F20)
 ```
-this will instruct it to use probing distance of 15mm (i.e. distance in xy plane between probed points), travel height 5mm and feedrate 20.0 mm/min
+this will instruct it to use probing distance of 7.5mm (i.e. distance in xy plane between probed points), travel height 1mm and feedrate 20.0 mm/min
 
 

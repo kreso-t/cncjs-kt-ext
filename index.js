@@ -64,7 +64,7 @@ Object.keys(options).forEach((key) => {
 })
 
 if (program.config) {
-  config = JSON.parse(fs.readFileSync(cncrc, 'utf8')) 
+  config = JSON.parse(fs.readFileSync(cncrc, 'utf8'))
   if (!program.port) {
     if (config.hasOwnProperty('ports') && config.ports[0] && config.ports[0].comName) {
       options.port = config.ports[0].comName
