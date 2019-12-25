@@ -6,6 +6,12 @@ It will probe the surface (within gcode boundaries (xmin,ymin) - (xmax,ymax)) an
 
 ## Install and run
 
+First of all, the `CNCJS_SECRET` environment variable must be set.
+
+```
+export CNCJS_SECRET=$(grep secret ~/.cncrc | sed "s/[ \t]\+//g" | tr ',' ' ' | cut -d':' -f2)
+```
+
 ```bash
 git clone https://github.com/kreso-t/cncjs-kt-ext.git
 cd cncjs-kt-ext
@@ -13,15 +19,15 @@ npm install
 node . --port /dev/ttyACM0
 ```
 
-Once started it will (by default) connect to local cncjs server and register it self for listening and sending commands (similar way as i.e. cncjs keyboard pendant)
+Once started it will (by default) connect to local cncjs server and register it self for listening and sending commands (similar way as i.e. cncjs keyboard pendant).
 
-to see the other possible start options use:
+To list all start options use:
 
 ```bash
 node . --help
 ```
 
-once it receives the #autolevel command it will execute the probing and transform the gcode
+Once it receives the #autolevel command it will execute the probing and update the gcode with fixed values.
 
 ## How to use
     
@@ -32,18 +38,21 @@ Then, by using a macro you may send the following command:
 (#autolevel)
 ```
 
-Without any options it will probe every 10mm, with travel height at 2mm, and probing feedrate 50mm/min
+Without any options it will probe every 10mm, with travel height at 2mm, and probing feedrate 50 mm/min.
     
-Please, note that this command will be ignored when put inside the gcode file or type it in the console, you must run it from a macro 
+Please, note that this command will be ignored when put inside the gcode file or type it in the console, you must run it from a macro.
 
-Once the probing is finished and gcode transformed you may run the gcode
+Once the probing is finished and gcode updated you may run the gcode.
 
-If you want to customize the probing distance, height and feedrate you may use the following syntax:
+You can customize the probing distance, height and feedrate you may use the following syntax:
 
 ```
+(#autolevel D[distance] H[height] F[feedrate])
+
+# Example
 (#autolevel D7.5 H1.0 F20)
 ```
 
-This will instruct it to use probing distance of 7.5mm (i.e. distance in xy plane between probed points), travel height 1mm and feedrate 20.0 mm/min
+This will instruct it to use probing distance of 7.5 mm (i.e. distance in XY plane between probed points), travel height 1 mm and feedrate 20.0 mm/min.
 
 
