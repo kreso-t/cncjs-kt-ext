@@ -7,10 +7,10 @@ It will probe the surface (within gcode boundaries (xmin,ymin) - (xmax,ymax)) an
 ## Install and run
 
 ```bash
-	git clone https://github.com/kreso-t/cncjs-kt-ext.git
-	cd cncjs-kt-ext
-	npm install
-	node . --port /dev/ttyACM0
+git clone https://github.com/kreso-t/cncjs-kt-ext.git
+cd cncjs-kt-ext
+npm install
+node . --port /dev/ttyACM0
 ```
 
 Once started it will (by default) connect to local cncjs server and register it self for listening and sending commands (similar way as i.e. cncjs keyboard pendant)
@@ -18,7 +18,7 @@ Once started it will (by default) connect to local cncjs server and register it 
 to see the other possible start options use:
 
 ```bash
-	node . --help
+node . --help
 ```
 
 once it receives the #autolevel command it will execute the probing and transform the gcode
