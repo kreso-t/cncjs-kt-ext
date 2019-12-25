@@ -23,7 +23,7 @@ to see the other possible start options use:
 
 once it receives the #autolevel command it will execute the probing and transform the gcode
 
-# How to use
+## How to use
     
 Jog your tool at PCB origin point and zero it (i.e. set work coordinates: 0,0,0).
 Then, by using a macro you may send the following command:
