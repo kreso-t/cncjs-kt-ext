@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 const program = require('commander')
 const pkg = require('./package.json')
 const fs = require('fs')
@@ -9,11 +10,11 @@ const Autolevel = require('./autolevel.js')
 
 program
   .version(pkg.version)
-  .usage('-s <secret> -p <port> [options]')
-  .option('-s, --secret', 'the secret key stored in the ~/.cncrc file')
+  .usage('\n-s <secret> -p <port> [options]\n')
+  .option('-s, --secret <secret>', 'the secret key stored in the ~/.cncrc file')
   .option('-p, --port <port>', 'path or name of serial port', '')
   .option('-b, --baudrate <baudrate>', 'baud rate (default: 115200)', 0)
-  .option('-c, --config <filename>', 'set the config file (deafult: ~/.cncrc)', '')
+  .option('-c, --config <filepath>', 'set the config file (deafult: ~/.cncrc)', '')
   .option('--socket-address <address>', 'socket address or hostname (default: localhost)', '')
   .option('--socket-port <port>', 'socket port (default: 8000)', '')
   .option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG (default: Grbl)', '')
