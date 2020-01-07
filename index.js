@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 const program = require('commander')
 const pkg = require('./package.json')
 const fs = require('fs')
@@ -9,22 +10,27 @@ const Autolevel = require('./autolevel.js')
 
 program
   .version(pkg.version)
-  .usage('-s <secret> -p <port> [options]')
-  .option('-s, --secret', 'the secret key stored in the ~/.cncrc file')
-  .option('-p, --port <port>', 'path or name of serial port', '')
-  .option('-b, --baudrate <baudrate>', 'baud rate (default: 115200)', 0)
-  .option('-c, --config <filename>', 'set the config file (deafult: ~/.cncrc)', '')
-  .option('--socket-address <address>', 'socket address or hostname (default: localhost)', '')
-  .option('--socket-port <port>', 'socket port (default: 8000)', '')
-  .option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG (default: Grbl)', '')
-  .option('--access-token-lifetime <lifetime>', 'access token lifetime in seconds or a time span string (default: 30d)', '')
+  .usage('-s <secret> -p <port> -id <id> -name <username> [options]')
+  .option('-i, --id <id>', 'the id stored in the ~/.cncrc file')
+  .option('-n, --name <name>', 'the user name stored in the ~/.cncrc file')
+  .option('-s, --secret <secret>', 'the secret key stored in the ~/.cncrc file')
+  .option('-p, --port <port>', 'path or name of serial port', '/dev/ttyACM0')
+  .option('-b, --baudrate <baudrate>', 'baud rate', '115200')
+  .option('-c, --config <filepath>', 'set the config file', '')
+  .option('--socket-address <address>', 'socket address or hostname', 'localhost')
+  .option('--socket-port <port>', 'socket port', '8000')
+  .option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG', 'Grbl')
+  .option('--access-token-lifetime <lifetime>', 'access token lifetime in seconds or a time span string', '30d')
 
 program.parse(process.argv)
 
 var options = {
+  id: program.id,
+  name: program.name,
   secret: program.secret,
   port: program.port,
   baudrate: program.baudrate,
+  config: program.config,
   socketAddress: program.socketAddress,
   socketPort: program.socketPort,
   controllerType: program.controllerType,
@@ -41,14 +47,6 @@ var defaults = {
   accessTokenLifetime: '30d'
 }
 
-const generateAccessToken = function (payload, secret, expiration) {
-  const token = jwt.sign(payload, secret, {
-    expiresIn: expiration
-  })
-
-  return token
-}
-
 // Get secret key from the config file and generate an access token
 const getUserHome = function () {
   return process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME']
@@ -56,6 +54,14 @@ const getUserHome = function () {
 
 const cncrc = (program.config) ? program.config : path.resolve(getUserHome(), '.cncrc')
 var config
+
+const generateAccessToken = function (payload, secret, expiration) {
+  const token = jwt.sign(payload, secret, {
+    expiresIn: expiration
+  })
+
+  return token
+}
 
 Object.keys(options).forEach((key) => {
   if (!options[key]) {
@@ -96,7 +102,7 @@ if (!options.secret) {
   }
 }
 
-const token = generateAccessToken({ id: '', name: 'cncjs-autolevel' }, options.secret, options.accessTokenLifetime)
+const token = generateAccessToken({ id: options.id, name: options.name }, options.secret, options.accessTokenLifetime)
 const url = 'ws://' + options.socketAddress + ':' + options.socketPort + '?token=' + token
 
 let socket = io.connect('ws://' + options.socketAddress + ':' + options.socketPort, {
