@@ -65,13 +65,13 @@ module.exports = class Autolevel {
       return
     }
     this.sckw.sendGcode('(AL: auto-leveling started)')
-    let m = /D([\.\+\-\d]+)/g.exec(cmd)
+    let m = /D([\.\+\-\d]+)/gi.exec(cmd)
     if (m) this.delta = parseFloat(m[1])
 
-    let h = /H([\.\+\-\d]+)/g.exec(cmd)
+    let h = /H([\.\+\-\d]+)/gi.exec(cmd)
     if (h) this.height = parseFloat(h[1])
 
-    let f = /F([\.\+\-\d]+)/g.exec(cmd)
+    let f = /F([\.\+\-\d]+)/gi.exec(cmd)
     if (f) this.feed = parseFloat(f[1])
     console.log(`STEP: ${this.delta} mm HEIGHT:${this.height} mm FEED:${this.feed}`)
 
@@ -248,23 +248,23 @@ module.exports = class Autolevel {
       let result = []
       lines.forEach(line => {
         let lineStripped = this.stripComments(line)
-        if (!/(X|Y|Z)/g.test(lineStripped)) result.push(lineStripped) // no coordinate change --> copy to output
-        else if (/(G38.+|G5.+|G10|G2.+|G4.+|G92|G92.1)/g.test(lineStripped)) result.push(lineStripped) // skip compensation for these G-Codes
+        if (!/(X|Y|Z)/gi.test(lineStripped)) result.push(lineStripped) // no coordinate change --> copy to output
+        else if (/(G38.+|G5.+|G10|G2.+|G4.+|G92|G92.1)/gi.test(lineStripped)) result.push(lineStripped) // skip compensation for these G-Codes
         else {
-          if (/G91/.test(lineStripped)) abs = false
-          if (/G90/.test(lineStripped)) abs = true
-          let xMatch = /X([\.\+\-\d]+)/g.exec(lineStripped)
+          if (/G91/i.test(lineStripped)) abs = false
+          if (/G90/i.test(lineStripped)) abs = true
+          let xMatch = /X([\.\+\-\d]+)/gi.exec(lineStripped)
           if (xMatch) pt.x = parseFloat(xMatch[1])
 
-          let yMatch = /Y([\.\+\-\d]+)/g.exec(lineStripped)
+          let yMatch = /Y([\.\+\-\d]+)/gi.exec(lineStripped)
           if (yMatch) pt.y = parseFloat(yMatch[1])
 
-          let zMatch = /Z([\.\+\-\d]+)/g.exec(lineStripped)
+          let zMatch = /Z([\.\+\-\d]+)/gi.exec(lineStripped)
           if (zMatch) pt.z = parseFloat(zMatch[1])
 
           if (abs) {
             // strip coordinates
-            lineStripped = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/g, '')
+            lineStripped = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/gi, '')
             let segs = this.splitToSegments(p0, pt)
             for (let seg of segs) {
               let cpt = this.compensateZCoord(seg)
