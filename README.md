@@ -9,7 +9,7 @@ It will probe the surface (within gcode boundaries (xmin,ymin) - (xmax,ymax)) an
 First of all, the `CNCJS_SECRET` environment variable must be set.
 
 ```
-export CNCJS_SECRET=$(grep secret ~/.cncrc | sed "s/[ \t]\+//g" | tr ',' ' ' | cut -d':' -f2)
+export CNCJS_SECRET=$(grep secret ~/.cncrc | sed "s/[ \t]+//g" | tr ',' ' ' | cut -d':' -f2 | sed 's/"//g' | sed 's/ //g')
 ```
 
 Instalation
