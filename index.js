@@ -7,7 +7,6 @@ const path = require('path')
 const io = require('socket.io-client')
 const jwt = require('jsonwebtoken')
 const Autolevel = require('./autolevel.js')
-
 program
   .version(pkg.version)
   .usage('-s <secret> -p <port> -id <id> -name <username> [options]')
@@ -96,6 +95,19 @@ if (!options.secret) {
       config = JSON.parse(fs.readFileSync(cncrc, 'utf8'))
     }
     options.secret = config.secret
+  } catch (err) {
+    console.error(err)
+    process.exit(1)
+  }
+}
+
+if(!options.id && !options.name) {
+  try {
+    if (!config) {
+      config = JSON.parse(fs.readFileSync(cncrc, 'utf8'))
+    }
+    options.id = config.users[0].id
+    options.name = config.users[0].name
   } catch (err) {
     console.error(err)
     process.exit(1)

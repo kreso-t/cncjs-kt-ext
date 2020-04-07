@@ -1,2 +1,3 @@
 node_modules/
 .vscode/
+pm2.config.js

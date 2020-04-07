@@ -6,14 +6,6 @@ It will probe the surface (within gcode boundaries (xmin,ymin) - (xmax,ymax)) an
 
 ## Install and run
 
-First of all, the `CNCJS_SECRET` environment variable must be set.
-
-```
-export CNCJS_SECRET=$(grep secret ~/.cncrc | sed "s/[ \t]+//g" | tr ',' ' ' | cut -d':' -f2 | sed 's/"//g' | sed 's/ //g')
-```
-
-Instalation
-
 ```bash
 git clone https://github.com/kreso-t/cncjs-kt-ext.git
 cd cncjs-kt-ext
@@ -37,6 +29,21 @@ node . --help
 | `(#autolevel)` | Probes the Z-offset in a grid way fixing the uploaded gcode. |
 | `(#autolevel_reapply)` | reapply previous probed Z-offset values when importing a new gcode |
 
+
+### Installation with `pm2`
+
+If you manage cncjs with `pm2`, you may want to manage this extension the same way. This assumes you've already set up [cncjs with pm2](https://cnc.js.org/docs/rpi-setup-guide/#install-production-process-manager-pm2).
+
+```bash
+git clone https://github.com/kreso-t/cncjs-kt-ext.git
+cd cncjs-kt-ext
+npm install
+cp pm2.example.config.js pm2.config.js
+pm2 start pm2.config.js
+pm2 save
+```
+
+This will start the extension in pm2 using the first user in your cncrc. If you wish to use a different user, you can modify the `pm2.config.js` to with command line options for the user name and id.
 
 ## How to use
     
