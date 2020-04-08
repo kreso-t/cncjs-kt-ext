@@ -34,11 +34,9 @@ node . --help
 
 | Command  | Description |
 | -------------- | ---------- |
-| `(#autolevel)` | Probes the Z-offset in a grid way changing the uploaded gcode. |
+| `(#autolevel)` | Probes the Z-offset in a grid way fixing the uploaded gcode. |
 | `(#autolevel_reapply)` | reapply previous probed Z-offset values when importing a new gcode |
 
-
-Once it receives the `#autolevel` command it will execute the probing and update the gcode with fixed values.
 
 ## How to use
     
