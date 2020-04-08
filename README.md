@@ -29,7 +29,12 @@ To list all start options use:
 node . --help
 ```
 
-Once it receives the #autolevel command it will execute the probing and update the gcode with fixed values.
+## Available Commands
+
+- `(#autolevel)` to probe board heigh in a grid way updating the uploaded gcode.
+- `(#autolevel_reapply)` reapply autoleveled values when importing a new gcode (since some areas do not have copper or are not connected anymore)
+
+Once it receives the `#autolevel` command it will execute the probing and update the gcode with fixed values.
 
 ## How to use
     
@@ -49,12 +54,13 @@ Once the probing is finished and gcode updated you may run the gcode.
 You can customize the probing distance, height and feedrate you may use the following syntax:
 
 ```
-(#autolevel D[distance] H[height] F[feedrate])
-
-# Example
-(#autolevel D7.5 H1.0 F20)
+(#autolevel D[distance] H[height] F[feedrate] M[margin])
 ```
 
-This will instruct it to use probing distance of 7.5 mm (i.e. distance in XY plane between probed points), travel height 1 mm and feedrate 20.0 mm/min.
+### Custom usage example
 
+```
+(#autolevel D7.5 H1.0 F20 M0.2)
+```
 
+This will instruct it to use probing distance of 7.5 mm (i.e. distance in XY plane between probed points), travel height 1 mm and feedrate 20.0 mm/min considerin a margin of 0.2 mm around the PCB area.
