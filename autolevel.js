@@ -57,6 +57,18 @@ module.exports = class Autolevel {
     //  this.socket.emit.apply(socket, ['write', this.port, "gcode", "G91 G1 Z1 F1000"]);
   }
 
+  reapply(cmd,context) {
+    if (!this.gcode) {
+      this.sckw.sendGcode('(AL: no gcode loaded)')
+      return
+    }
+    if(this.probedPoints.length<3) {
+      this.sckw.sendGcode('(AL: no previous autolevel points)')
+      return;
+    }
+    this.applyCompensation();
+  }
+
   start(cmd, context) {
     console.log(cmd, context)
 
@@ -65,15 +77,21 @@ module.exports = class Autolevel {
       return
     }
     this.sckw.sendGcode('(AL: auto-leveling started)')
-    let m = /D([\.\+\-\d]+)/g.exec(cmd)
+    let m = /D([\.\+\-\d]+)/gi.exec(cmd)
     if (m) this.delta = parseFloat(m[1])
 
-    let h = /H([\.\+\-\d]+)/g.exec(cmd)
+    let h = /H([\.\+\-\d]+)/gi.exec(cmd)
     if (h) this.height = parseFloat(h[1])
 
-    let f = /F([\.\+\-\d]+)/g.exec(cmd)
+    let f = /F([\.\+\-\d]+)/gi.exec(cmd)
     if (f) this.feed = parseFloat(f[1])
-    console.log(`STEP: ${this.delta} mm HEIGHT:${this.height} mm FEED:${this.feed}`)
+
+    let margin = this.delta/4;
+
+    let mg = /M([\.\+\-\d]+)/gi.exec(cmd)
+    if (mg) margin = parseFloat(mg[1])
+
+    console.log(`STEP: ${this.delta} mm HEIGHT:${this.height} mm FEED:${this.feed} MARGIN: ${margin} mm`)
 
     this.wco = {
       x: context.mposx - context.posx,
@@ -84,26 +102,32 @@ module.exports = class Autolevel {
     this.planedPointCount = 0
     console.log('WCO:', this.wco)
     let code = []
-    let dx = (context.xmax - context.xmin) / parseInt((context.xmax - context.xmin) / this.delta)
-    let dy = (context.ymax - context.ymin) / parseInt((context.ymax - context.ymin) / this.delta)
+
+    let xmin = context.xmin + margin;
+    let xmax = context.xmax - margin;
+    let ymin = context.ymin + margin;
+    let ymax = context.ymax - margin;
+
+    let dx = (xmax - xmin) / parseInt((xmax - xmin) / this.delta)
+    let dy = (ymax - ymin) / parseInt((ymax - ymin) / this.delta)
     code.push('(AL: probing initial point)')
-    code.push(`G90 G0 X${context.xmin.toFixed(3)} Y${context.ymin.toFixed(3)} Z${this.height}`)
+    code.push(`G90 G0 X${xmin.toFixed(3)} Y${ymin.toFixed(3)} Z${this.height}`)
     code.push(`G38.2 Z-${this.height} F${this.feed / 2}`)
     code.push(`G10 L20 P1 Z0`) // set the z zero
     code.push(`G0 Z${this.height}`)
     this.planedPointCount++
 
-    let y = context.ymin - dy
+    let y = ymin - dy
 
-    while (y < context.ymax - 0.01) {
+    while (y < ymax - 0.01) {
       y += dy
-      if (y > context.ymax) y = context.ymax
-      let x = context.xmin - dx
-      if (y <= context.ymin + 0.01) x = context.xmin // don't probe first point twice
+      if (y > ymax) y = ymax
+      let x = xmin - dx
+      if (y <= ymin + 0.01) x = xmin // don't probe first point twice
 
-      while (x < context.xmax - 0.01) {
+      while (x < xmax - 0.01) {
         x += dx
-        if (x > context.xmax) x = context.xmax
+        if (x > xmax) x = xmax
         code.push(`(AL: probing point ${this.planedPointCount + 1})`)
         code.push(`G90 G0 X${x.toFixed(3)} Y${y.toFixed(3)} Z${this.height}`)
         code.push(`G38.2 Z-${this.height} F${this.feed}`)
@@ -248,23 +272,23 @@ module.exports = class Autolevel {
       let result = []
       lines.forEach(line => {
         let lineStripped = this.stripComments(line)
-        if (!/(X|Y|Z)/g.test(lineStripped)) result.push(lineStripped) // no coordinate change --> copy to output
-        else if (/(G38.+|G5.+|G10|G2.+|G4.+|G92|G92.1)/g.test(lineStripped)) result.push(lineStripped) // skip compensation for these G-Codes
+        if (!/(X|Y|Z)/gi.test(lineStripped)) result.push(lineStripped) // no coordinate change --> copy to output
+        else if (/(G38.+|G5.+|G10|G2.+|G4.+|G92|G92.1)/gi.test(lineStripped)) result.push(lineStripped) // skip compensation for these G-Codes
         else {
-          if (/G91/.test(lineStripped)) abs = false
-          if (/G90/.test(lineStripped)) abs = true
-          let xMatch = /X([\.\+\-\d]+)/g.exec(lineStripped)
+          if (/G91/i.test(lineStripped)) abs = false
+          if (/G90/i.test(lineStripped)) abs = true
+          let xMatch = /X([\.\+\-\d]+)/gi.exec(lineStripped)
           if (xMatch) pt.x = parseFloat(xMatch[1])
 
-          let yMatch = /Y([\.\+\-\d]+)/g.exec(lineStripped)
+          let yMatch = /Y([\.\+\-\d]+)/gi.exec(lineStripped)
           if (yMatch) pt.y = parseFloat(yMatch[1])
 
-          let zMatch = /Z([\.\+\-\d]+)/g.exec(lineStripped)
+          let zMatch = /Z([\.\+\-\d]+)/gi.exec(lineStripped)
           if (zMatch) pt.z = parseFloat(zMatch[1])
 
           if (abs) {
             // strip coordinates
-            lineStripped = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/g, '')
+            lineStripped = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/gi, '')
             let segs = this.splitToSegments(p0, pt)
             for (let seg of segs) {
               let cpt = this.compensateZCoord(seg)
