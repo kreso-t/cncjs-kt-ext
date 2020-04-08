@@ -31,8 +31,12 @@ node . --help
 
 ## Available Commands
 
-- `(#autolevel)` to probe board heigh in a grid way updating the uploaded gcode.
-- `(#autolevel_reapply)` reapply autoleveled values when importing a new gcode (since some areas do not have copper or are not connected anymore)
+
+| Command  | Description |
+| -------------- | ---------- |
+| `(#autolevel)` | Probes the Z-offset in a grid way changing the uploaded gcode. |
+| `(#autolevel_reapply)` | reapply previous probed Z-offset values when importing a new gcode |
+
 
 Once it receives the `#autolevel` command it will execute the probing and update the gcode with fixed values.
 
