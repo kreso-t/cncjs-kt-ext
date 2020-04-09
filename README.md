@@ -66,3 +66,14 @@ You can customize the probing distance, height and feedrate you may use the foll
 ```
 
 This will instruct it to use probing distance of 7.5 mm (i.e. distance in XY plane between probed points), travel height 1 mm and feedrate 20.0 mm/min considerin a margin of 0.2 mm around the PCB area.
+
+
+If a new related gcode is needed, after the first mill process. Autolevel values can be reapplyed with the following command:
+
+```
+(#autolevel_reapply)
+```
+
+In the case of the different drill bit lengths, after changing the drill bit to another having different length, you have to Z-Probe the PCB surface at approximately starting point (xmin, ymin) and set the Z WCO to zero again before firing the #autolevel_reapply command.
+
+
