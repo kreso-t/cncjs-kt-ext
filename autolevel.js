@@ -12,6 +12,9 @@ module.exports = class Autolevel {
     this.feed = 50 // probing feedrate
     this.height = 2 // travelling height
     this.probedPoints = []
+    this.min_dz = 0;
+    this.max_dz = 0;
+    this.sum_dz = 0;
     this.planedPointCount = 0
     this.wco = {
       x: 0,
@@ -43,9 +46,20 @@ module.exports = class Autolevel {
             z: prb[2] - this.wco.z
           }
           if (this.planedPointCount > 0) {
+            if(this.probedPoints.length ===0) {
+              this.min_dz = pt.z;
+              this.max_dz = pt.z;
+              this.sum_dz = pt.z;
+            } else {
+              if(pt.z < this.min_dz) this.min_dz = pt.z;
+              if(pt.z > this.max_dz) this.max_dz = pt.z;
+              this.sum_dz += pt.z;
+            }
             this.probedPoints.push(pt)
             console.log('probed ' + this.probedPoints.length + '/' + this.planedPointCount + '>', pt.x.toFixed(3), pt.y.toFixed(3), pt.z.toFixed(3))
+            // send info to console
             if (this.probedPoints.length >= this.planedPointCount) {
+              this.sckw.sendGcode(`(AL: dz_min=${this.min_dz.toFixed(3)}, dz_max=${this.max_dz.toFixed(3)}, dz_avg=${(this.sum_dz / this.probedPoints.length).toFixed(3)})`);
               this.applyCompensation()
               this.planedPointCount = 0
             }
@@ -309,7 +323,7 @@ module.exports = class Autolevel {
       const newgcodeFileName = alFileNamePrefix + this.gcodeFileName;
       this.sckw.sendGcode(`(AL: loading new gcode ${newgcodeFileName} ...)`)
       this.sckw.loadGcode(newgcodeFileName, result.join('\n'))
-      this.sckw.sendGcode('(AL: finished)')
+      this.sckw.sendGcode(`(AL: finished)`)
     } catch (x) {
       this.sckw.sendGcode(`(AL: error occurred ${x})`)
     }
