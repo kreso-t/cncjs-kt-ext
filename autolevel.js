@@ -3,6 +3,25 @@ const SocketWrap = require('./socketwrap')
 
 const alFileNamePrefix = '#AL:'
 
+const Units = {
+    MILLIMETERS: 1,
+    INCHES: 2,
+
+    convert: function(value, in_units, out_units) {
+        if (in_units == out_units) {
+            return value;
+        }
+        if (in_units == this.MILLIMETERS && out_units == this.INCHES) {
+            return value / 25.4;
+        }
+        if (in_units == this.INCHES && out_units == this.MILLIMETERS) {
+            return value * 25.4;
+        }
+    }
+}
+
+Object.freeze(Units);
+
 module.exports = class Autolevel {
   constructor(socket, options) {
     this.gcodeFileName = ''
@@ -125,6 +144,7 @@ module.exports = class Autolevel {
     let dx = (xmax - xmin) / parseInt((xmax - xmin) / this.delta)
     let dy = (ymax - ymin) / parseInt((ymax - ymin) / this.delta)
     code.push('(AL: probing initial point)')
+    code.push(`G21`)
     code.push(`G90 G0 X${xmin.toFixed(3)} Y${ymin.toFixed(3)} Z${this.height}`)
     code.push(`G38.2 Z-${this.height} F${this.feed / 2}`)
     code.push(`G10 L20 P1 Z0`) // set the z zero
@@ -191,7 +211,7 @@ module.exports = class Autolevel {
     return `(x:${pt.x.toFixed(3)} y:${pt.y.toFixed(3)} z:${pt.z.toFixed(3)})`
   }
 
-  splitToSegments(p1, p2) {
+  splitToSegments(p1, p2, units) {
     let res = []
     let v = this.sub3(p2, p1) // delta
     let dist = Math.sqrt(this.distanceSquared3(p1, p2)) // distance
@@ -200,7 +220,7 @@ module.exports = class Autolevel {
       y: v.y / dist,
       z: v.z / dist
     } // direction vector
-    let maxSegLength = this.delta / 2
+    let maxSegLength = Units.convert(this.delta, Units.MILLIMETERS, units) / 2
     res.push({
       x: p1.x,
       y: p1.y,
@@ -221,6 +241,7 @@ module.exports = class Autolevel {
     return res
   }
 
+  // Argument is assumed to be in millimeters.
   getThreeClosestPoints(pt) {
     let res = []
     if (this.probedPoints.length < 3) {
@@ -244,25 +265,32 @@ module.exports = class Autolevel {
     return res
   }
 
-  compensateZCoord(pt) {
-    let points = this.getThreeClosestPoints(pt)
+  compensateZCoord(pt_in_or_mm, input_units) {
+
+    let pt_mm = {
+        x: Units.convert(pt_in_or_mm.x, input_units, Units.MILLIMETERS),
+        y: Units.convert(pt_in_or_mm.y, input_units, Units.MILLIMETERS),
+        z: Units.convert(pt_in_or_mm.z, input_units, Units.MILLIMETERS)
+    }
+
+    let points = this.getThreeClosestPoints(pt_mm)
     if (points.length < 3) {
       console.log('Cant find 3 closest points')
-      return pt
+      return pt_in_or_mm
     }
     let normal = this.crossProduct3(this.sub3(points[1], points[0]), this.sub3(points[2], points[0]))
     let pp = points[0] // point on plane
     let dz = 0 // compensation delta
     if (normal.z !== 0) {
       // find z at the point seg, on the plane defined by three points
-      dz = pp.z - (normal.x * (pt.x - pp.x) + normal.y * (pt.y - pp.y)) / normal.z
+      dz = pp.z - (normal.x * (pt_mm.x - pp.x) + normal.y * (pt_mm.y - pp.y)) / normal.z
     } else {
-      console.log(this.formatPt(pt), 'normal.z is zero', this.formatPt(points[0]), this.formatPt(points[1]), this.formatPt(points[2]))
+      console.log(this.formatPt(pt_mm), 'normal.z is zero', this.formatPt(points[0]), this.formatPt(points[1]), this.formatPt(points[2]))
     }
     return {
-      x: pt.x,
-      y: pt.y,
-      z: pt.z + dz
+      x: Units.convert(pt_mm.x, Units.MILLIMETERS, input_units),
+      y: Units.convert(pt_mm.y, Units.MILLIMETERS, input_units),
+      z: Units.convert(pt_mm.z + dz, Units.MILLIMETERS, input_units)
     }
   }
 
@@ -276,6 +304,7 @@ module.exports = class Autolevel {
         y: 0,
         z: 0
       }
+      let p0_initialized = false
       let pt = {
         x: 0,
         y: 0,
@@ -283,41 +312,55 @@ module.exports = class Autolevel {
       }
 
       let abs = true
+      let units = Units.MILLIMETERS
       let result = []
       lines.forEach(line => {
         let lineStripped = this.stripComments(line)
-        if (!/(X|Y|Z)/gi.test(lineStripped)) result.push(lineStripped) // no coordinate change --> copy to output
-        else if (/(G38.+|G5.+|G10|G2.+|G4.+|G92|G92.1)/gi.test(lineStripped)) result.push(lineStripped) // skip compensation for these G-Codes
+        if (/(G38.+|G5.+|G10|G4.+|G92|G92.1)/gi.test(lineStripped)) result.push(lineStripped) // skip compensation for these G-Codes
         else {
           if (/G91/i.test(lineStripped)) abs = false
           if (/G90/i.test(lineStripped)) abs = true
-          let xMatch = /X([\.\+\-\d]+)/gi.exec(lineStripped)
-          if (xMatch) pt.x = parseFloat(xMatch[1])
+          if (/G20/i.test(lineStripped)) units = Units.INCHES
+          if (/G21/i.test(lineStripped)) units = Units.MILLIMETERS
 
-          let yMatch = /Y([\.\+\-\d]+)/gi.exec(lineStripped)
-          if (yMatch) pt.y = parseFloat(yMatch[1])
-
-          let zMatch = /Z([\.\+\-\d]+)/gi.exec(lineStripped)
-          if (zMatch) pt.z = parseFloat(zMatch[1])
-
-          if (abs) {
-            // strip coordinates
-            lineStripped = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/gi, '')
-            let segs = this.splitToSegments(p0, pt)
-            for (let seg of segs) {
-              let cpt = this.compensateZCoord(seg)
-              let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${seg.z.toFixed(3)}`
-              result.push(newLine.trim())
-            }
+          if (!/(X|Y|Z)/gi.test(lineStripped)) {
+              result.push(lineStripped) // no coordinate change --> copy to output
           } else {
-            result.push(lineStripped)
-            console.log('WARNING: using relative mode may not produce correct results')
+              let xMatch = /X([\.\+\-\d]+)/gi.exec(lineStripped)
+              if (xMatch) pt.x = parseFloat(xMatch[1])
+
+              let yMatch = /Y([\.\+\-\d]+)/gi.exec(lineStripped)
+              if (yMatch) pt.y = parseFloat(yMatch[1])
+
+              let zMatch = /Z([\.\+\-\d]+)/gi.exec(lineStripped)
+              if (zMatch) pt.z = parseFloat(zMatch[1])
+
+              if (abs) {
+                // strip coordinates
+                lineStripped = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/gi, '')
+                if (p0_initialized) {
+                    let segs = this.splitToSegments(p0, pt)
+                    for (let seg of segs) {
+                      let cpt = this.compensateZCoord(seg, units)
+                      let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${seg.z.toFixed(3)}`
+                      result.push(newLine.trim())
+                    }
+                } else {
+                    let cpt = this.compensateZCoord(pt, units)
+                    let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${pt.z.toFixed(3)}`
+                    result.push(newLine.trim())
+                    p0_initialized = true
+                }
+              } else {
+                result.push(lineStripped)
+                console.log('WARNING: using relative mode may not produce correct results')
+              }
+              p0 = {
+                x: pt.x,
+                y: pt.y,
+                z: pt.z
+              } // clone
           }
-          p0 = {
-            x: pt.x,
-            y: pt.y,
-            z: pt.z
-          } // clone
         }
       })
       const newgcodeFileName = alFileNamePrefix + this.gcodeFileName;
