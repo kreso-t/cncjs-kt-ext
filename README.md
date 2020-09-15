@@ -59,6 +59,14 @@ You can customize the probing distance, height and feedrate you may use the foll
 (#autolevel D[distance] H[height] F[feedrate] M[margin])
 ```
 
+If a new related gcode is needed, after the first mill process. Autolevel values can be reapplyed with the following command:
+
+```
+(#autolevel_reapply)
+```
+
+In the case of the different drill bit lengths, after changing the drill bit to another having different length, you have to Z-Probe the PCB surface at approximately starting point (xmin, ymin) and set the Z WCO to zero again before firing the `#autolevel_reapply` command.
+
 ### Custom usage example
 
 ```
