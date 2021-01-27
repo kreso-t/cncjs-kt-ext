@@ -145,8 +145,10 @@ module.exports = class Autolevel {
     let dy = (ymax - ymin) / parseInt((ymax - ymin) / this.delta)
     code.push('(AL: probing initial point)')
     code.push(`G21`)
-    code.push(`G90 G0 X${xmin.toFixed(3)} Y${ymin.toFixed(3)} Z${this.height}`)
-    code.push(`G38.2 Z-${this.height} F${this.feed / 2}`)
+    code.push(`G90`)
+    code.push(`G0 Z${this.height}`)
+    code.push(`G0 X${xmin.toFixed(3)} Y${ymin.toFixed(3)} Z${this.height}`)
+    code.push(`G38.2 Z-${this.height+1} F${this.feed / 2}`)
     code.push(`G10 L20 P1 Z0`) // set the z zero
     code.push(`G0 Z${this.height}`)
     this.planedPointCount++
