@@ -163,5 +163,8 @@ function callback (err, socket) {
     } else if (data.indexOf('#autolevel') >= 0 && context && context.source === 'feeder') {
       autolevel.start(data, context)
     }
+    else {
+      autolevel.updateContext(context)
+    }
   })
 }

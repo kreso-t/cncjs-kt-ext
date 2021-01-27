@@ -174,6 +174,18 @@ module.exports = class Autolevel {
     this.sckw.sendGcode(code.join('\n'))
   }
 
+  updateContext(context) {
+      if (this.wco.z != 0 &&
+          context.mposz !== undefined &&
+          context.posz !== undefined) {
+          let wcoz = context.mposz - context.posz;
+          if (Math.abs(this.wco.z - wcoz) > 0.00001) {
+             this.wco.z = wcoz;
+             console.log('WARNING: WCO Z offset drift detected! wco.z is now: ' + this.wco.z);
+          }
+      }    
+  }
+
   stripComments(line) {
     const re1 = new RegExp(/\s*\([^\)]*\)/g) // Remove anything inside the parentheses
     const re2 = new RegExp(/\s*;.*/g) // Remove anything after a semi-colon to the end of the line, including preceding spaces
