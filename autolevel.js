@@ -166,7 +166,7 @@ module.exports = class Autolevel {
         if (x > xmax) x = xmax
         code.push(`(AL: probing point ${this.planedPointCount + 1})`)
         code.push(`G90 G0 X${x.toFixed(3)} Y${y.toFixed(3)} Z${this.height}`)
-        code.push(`G38.2 Z-${this.height} F${this.feed}`)
+        code.push(`G38.2 Z-${this.height+1} F${this.feed}`)
         code.push(`G0 Z${this.height}`)
         this.planedPointCount++
       }
