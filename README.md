@@ -60,11 +60,16 @@ Please, note that this command will be ignored when put inside the gcode file or
 
 Once the probing is finished and gcode updated you may run the gcode.
 
-You can customize the probing distance, height and feedrate you may use the following syntax:
+You can customize the probing distance, height and feedrate and/or probing mode by using the following syntax:
 
 ```
-(#autolevel D[distance] H[height] F[feedrate] M[margin])
+(#autolevel D[distance] H[height] F[feedrate] M[margin] P[probeOnly])
 ```
+
+The "probeOnly" value indicates if the probing should be applied to any loaded GCode or not. The default value of "0" indicates that yes, the probe results should be applied immediately to any loaded GCode.  A probeOnly of "1" indicates that
+probing should NOT be applied to any loaded GCode. This special mode is used in conjunction with the PROBEOPEN command to save probe values to an external file (see below). This is the only mode that allows probing to occur where no g-code is
+currently loaded.
+
 
 If a new related gcode is needed, after the first mill process. Autolevel values can be reapplyed with the following command:
 

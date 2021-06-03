@@ -1,7 +1,10 @@
 /* eslint-disable no-useless-escape */
 const SocketWrap = require('./socketwrap')
+const fs = require('fs')
 
 const alFileNamePrefix = '#AL:'
+
+const DEFAULT_PROBE_FILE = '__last_Z_probe.txt';
 
 const Units = {
     MILLIMETERS: 1,
@@ -35,11 +38,39 @@ module.exports = class Autolevel {
     this.max_dz = 0;
     this.sum_dz = 0;
     this.planedPointCount = 0
+    this.probeFile = 0;
     this.wco = {
       x: 0,
       y: 0,
       z: 0
     }
+
+    // Try to read in any pre-existing probe data...
+    fs.readFile(DEFAULT_PROBE_FILE, (err, data) => {
+        if (!err) {
+           try {
+            this.probedPoints = [];
+            let lines = data.split('\n');
+            lines.forEach(line => {
+                let vals = line.split(' ');
+                if (vals.length >= 3) {
+                  let pt = {
+                    x: parseFloat(vals[0]),
+                    y: parseFloat(vals[1]),
+                    z: parseFloat(vals[2])
+                  };
+                  this.probedPoints.push(pt);
+                }
+            });
+            console.log(`Read ${this.probedPoints.length} probed points from previous session`);
+          }
+          catch (err2) {
+              this.probedPoints = [];
+              console.log(`Failed to read probed points from prevoius session: ${err2}`);
+          }
+        }
+    });
+
     socket.on('gcode:load', (file, gc) => {
       if (!file.startsWith(alFileNamePrefix)) {
         this.gcodeFileName = file
@@ -75,11 +106,23 @@ module.exports = class Autolevel {
               this.sum_dz += pt.z;
             }
             this.probedPoints.push(pt)
+
+            if (this.probeFile) {
+              // Write the results to the probe file. Use 9 point format for compatibility
+              // with LinuxCNC probe file format
+              fs.writeSync(this.probeFile, `${pt.x} ${pt.y} ${pt.z} 0 0 0 0 0 0\n`);
+            }
+
             console.log('probed ' + this.probedPoints.length + '/' + this.planedPointCount + '>', pt.x.toFixed(3), pt.y.toFixed(3), pt.z.toFixed(3))
             // send info to console
             if (this.probedPoints.length >= this.planedPointCount) {
               this.sckw.sendGcode(`(AL: dz_min=${this.min_dz.toFixed(3)}, dz_max=${this.max_dz.toFixed(3)}, dz_avg=${(this.sum_dz / this.probedPoints.length).toFixed(3)})`);
-              this.applyCompensation()
+              if (this.probeFile) {
+                this.fileClose();
+              }
+              if (!this.probeOnly) {
+                 this.applyCompensation()
+              }
               this.planedPointCount = 0
             }
           }
@@ -88,6 +131,24 @@ module.exports = class Autolevel {
     })
 
     //  this.socket.emit.apply(socket, ['write', this.port, "gcode", "G91 G1 Z1 F1000"]);
+  }
+
+  fileOpen(fileName) {
+     try {
+        this.probeFile = fs.openSync(fileName, "w");
+        console.log(`Opened probe file ${fileName}`);
+     }
+     catch (err) {
+        this.probeFile = 0;
+        this.sckw.sendGcode(`(AL: Could not open probe file ${err})`)
+     }
+  }
+
+  fileClose() {
+      if (this.probeFile) {
+         fs.closeSync(this.probeFile);
+         this.probeFile = 0;
+      }
   }
 
   reapply(cmd,context) {
@@ -105,10 +166,27 @@ module.exports = class Autolevel {
   start(cmd, context) {
     console.log(cmd, context)
 
+    // A parameter of P1 indicates a "probe only", and that
+    // the results should NOT be applied to any loaded GCode.
+    // The default value is "false"
+    this.probeOnly = 0;
+    let p = /P([\.\+\-\d]+)/gi.exec(cmd)
+    if (p) this.probeOnly = parseFloat(p[1])
+
     if (!this.gcode) {
       this.sckw.sendGcode('(AL: no gcode loaded)')
-      return
+      if (!this.probeOnly) {
+         return
+      }
     }
+
+    if (!this.probeFile) {
+      // Since no explicit command was given to open the probe recording
+      // file, record the probe entries to be reused (in case of system
+      // restart)
+      this.fileOpen(DEFAULT_PROBE_FILE);
+    }
+
     this.sckw.sendGcode('(AL: auto-leveling started)')
     let m = /D([\.\+\-\d]+)/gi.exec(cmd)
     if (m) this.delta = parseFloat(m[1])
@@ -124,7 +202,7 @@ module.exports = class Autolevel {
     let mg = /M([\.\+\-\d]+)/gi.exec(cmd)
     if (mg) margin = parseFloat(mg[1])
 
-    console.log(`STEP: ${this.delta} mm HEIGHT:${this.height} mm FEED:${this.feed} MARGIN: ${margin} mm`)
+    console.log(`STEP: ${this.delta} mm HEIGHT:${this.height} mm FEED:${this.feed} MARGIN: ${margin} mm  PROBE ONLY:${this.probeOnly}`)
 
     this.wco = {
       x: context.mposx - context.posx,
