@@ -168,14 +168,16 @@ function callback (err, socket) {
       autolevel.reapply(data, context)
     } else if (data.indexOf('#autolevel') >= 0 && context && context.source === 'feeder') {
       autolevel.start(data, context)
-    } else if (data.indexOf('PROBEOPEN')) {
+    } else if (data.indexOf('PROBEOPEN') > 0) {
+      console.log(`Probe file open command: ${data}`);
       let startNdx = data.indexOf('PROBEOPEN') + 9;
       let endParen = data.indexOf(')');
       if (endParen > 0) {
          let fileName = data.substring(startNdx, endParen).trim();
          autolevel.fileOpen(fileName);
       }
-    } else if (data.indexOf('PROBECLOSE') >= 0) {
+    } else if (data.indexOf('PROBECLOSE') > 0) {
+         console.log('Probe file close command');
          autolevel.fileClose();
     }
     else {
