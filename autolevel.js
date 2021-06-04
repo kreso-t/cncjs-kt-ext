@@ -95,6 +95,13 @@ module.exports = class Autolevel {
             y: prb[1] - this.wco.y,
             z: prb[2] - this.wco.z
           }
+
+          if (this.probeFile) {
+            // Write the results to the probe file. Use 9 point format for compatibility
+            // with LinuxCNC probe file format
+            fs.writeSync(this.probeFile, `${pt.x} ${pt.y} ${pt.z} 0 0 0 0 0 0\n`);
+          }
+
           if (this.planedPointCount > 0) {
             if(this.probedPoints.length ===0) {
               this.min_dz = pt.z;
@@ -107,12 +114,6 @@ module.exports = class Autolevel {
             }
             this.probedPoints.push(pt)
 
-            if (this.probeFile) {
-              // Write the results to the probe file. Use 9 point format for compatibility
-              // with LinuxCNC probe file format
-              fs.writeSync(this.probeFile, `${pt.x} ${pt.y} ${pt.z} 0 0 0 0 0 0\n`);
-            }
-
             console.log('probed ' + this.probedPoints.length + '/' + this.planedPointCount + '>', pt.x.toFixed(3), pt.y.toFixed(3), pt.z.toFixed(3))
             // send info to console
             if (this.probedPoints.length >= this.planedPointCount) {
@@ -124,6 +125,7 @@ module.exports = class Autolevel {
                  this.applyCompensation()
               }
               this.planedPointCount = 0
+              this.wco = { x: 0, y: 0, z: 0 }              
             }
           }
         }
@@ -146,7 +148,8 @@ module.exports = class Autolevel {
 
   fileClose() {
       if (this.probeFile) {
-         fs.closeSync(this.probeFile);
+        console.log('Closing probe file');
+        fs.closeSync(this.probeFile);
          this.probeFile = 0;
       }
   }
