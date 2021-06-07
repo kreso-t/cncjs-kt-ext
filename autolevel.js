@@ -46,11 +46,13 @@ module.exports = class Autolevel {
     }
 
     // Try to read in any pre-existing probe data...
-    fs.readFile(DEFAULT_PROBE_FILE, (err, data) => {
+    fs.readFile(DEFAULT_PROBE_FILE, 'utf8', (err, data) => {
         if (!err) {
            try {
+            console.log(`Loading previous probe from ${DEFAULT_PROBE_FILE}`)
             this.probedPoints = [];
             let lines = data.split('\n');
+            let pnum = 0;
             lines.forEach(line => {
                 let vals = line.split(' ');
                 if (vals.length >= 3) {
@@ -60,6 +62,8 @@ module.exports = class Autolevel {
                     z: parseFloat(vals[2])
                   };
                   this.probedPoints.push(pt);
+                  pnum++;
+                  console.log(`point ${pnum} X:${pt.x} Y:${pt.y} Z:${pt.z}`);
                 }
             });
             console.log(`Read ${this.probedPoints.length} probed points from previous session`);
@@ -139,6 +143,7 @@ module.exports = class Autolevel {
      try {
         this.probeFile = fs.openSync(fileName, "w");
         console.log(`Opened probe file ${fileName}`);
+        this.sckw.sendGcode(`(AL: Opened probe file ${fileName})`)        
      }
      catch (err) {
         this.probeFile = 0;
@@ -205,7 +210,22 @@ module.exports = class Autolevel {
     let mg = /M([\.\+\-\d]+)/gi.exec(cmd)
     if (mg) margin = parseFloat(mg[1])
 
-    console.log(`STEP: ${this.delta} mm HEIGHT:${this.height} mm FEED:${this.feed} MARGIN: ${margin} mm  PROBE ONLY:${this.probeOnly}`)
+
+    let xSize, ySize;
+    let xs = /X([\.\+\-\d]+)/gi.exec(cmd)
+    if (xs) xSize = parseFloat(xs[1])
+
+    let ys = /Y([\.\+\-\d]+)/gi.exec(cmd)
+    if (ys) ySize = parseFloat(ys[1])
+
+    let area;
+    if (xSize) {
+       area = `(${xSize}, ${ySize})`
+    }
+    else {
+      area = 'Not specified'
+    }
+    console.log(`STEP: ${this.delta} mm HEIGHT:${this.height} mm FEED:${this.feed} MARGIN: ${margin} mm  PROBE ONLY:${this.probeOnly}  Area: ${area}`)
 
     this.wco = {
       x: context.mposx - context.posx,
@@ -217,10 +237,24 @@ module.exports = class Autolevel {
     console.log('WCO:', this.wco)
     let code = []
 
-    let xmin = context.xmin + margin;
-    let xmax = context.xmax - margin;
-    let ymin = context.ymin + margin;
-    let ymax = context.ymax - margin;
+    let xmin, xmax, ymin, ymax;
+    if (xSize) {
+       xmin = margin;
+       xmax = xSize - margin;
+    }
+    else {
+       xmin = context.xmin + margin;
+       xmax = context.xmax - margin;
+    }
+
+    if (ySize) {
+       ymin = margin;
+       ymax = ySize - margin;
+    }
+    else {
+       ymin = context.ymin + margin;
+       ymax = context.ymax - margin;
+    }
 
     let dx = (xmax - xmin) / parseInt((xmax - xmin) / this.delta)
     let dy = (ymax - ymin) / parseInt((ymax - ymin) / this.delta)
@@ -264,7 +298,7 @@ module.exports = class Autolevel {
              this.wco.z = wcoz;
              console.log('WARNING: WCO Z offset drift detected! wco.z is now: ' + this.wco.z);
           }
-      }    
+      }
   }
 
   stripComments(line) {
