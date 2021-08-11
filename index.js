@@ -156,12 +156,29 @@ socket.on('serialport:error', function (options) {
 
 // eslint-disable-next-line handle-callback-err
 function callback (err, socket) {
+
+  if (err) {
+    // SOME kind of error handling if an error occurs
+    throw err;
+  }  
+
   let autolevel = new Autolevel(socket, options)
   socket.on('serialport:write', function (data, context) {
     if (data.indexOf('#autolevel_reapply') >= 0 && context && context.source === 'feeder') {
       autolevel.reapply(data, context)
     } else if (data.indexOf('#autolevel') >= 0 && context && context.source === 'feeder') {
       autolevel.start(data, context)
+    } else if (data.indexOf('PROBEOPEN') > 0) {
+      console.log(`Probe file open command: ${data}`);
+      let startNdx = data.indexOf('PROBEOPEN') + 9;
+      let endParen = data.indexOf(')');
+      if (endParen > 0) {
+         let fileName = data.substring(startNdx, endParen).trim();
+         autolevel.fileOpen(fileName);
+      }
+    } else if (data.indexOf('PROBECLOSE') > 0) {
+         console.log('Probe file close command');
+         autolevel.fileClose();
     }
     else {
       autolevel.updateContext(context)
