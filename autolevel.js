@@ -394,7 +394,7 @@ module.exports = class Autolevel {
     return res
   }
 
-  compensateXYZCoord(pt_in_or_mm, input_units) {
+  compensateZCoord(pt_in_or_mm, input_units) {
 
     let pt_mm = {
         x: Units.convert(pt_in_or_mm.x, input_units, Units.MILLIMETERS),
@@ -410,22 +410,15 @@ module.exports = class Autolevel {
     let normal = this.crossProduct3(this.sub3(points[1], points[0]), this.sub3(points[2], points[0]))
     let pp = points[0] // point on plane
     let dz = 0 // compensation delta
-    let cx = 0 // compensated (final) pt_mm.x
-    let cy = 0 // compensated (final) pt_mm.y
     if (normal.z !== 0) {
       // find z at the point seg, on the plane defined by three points
       dz = pp.z - (normal.x * (pt_mm.x - pp.x) + normal.y * (pt_mm.y - pp.y)) / normal.z
-      cx = Math.sqrt((pt_mm.x * pt_mm.x) - (dz * dz)) //pythagorean theorem, with x&z plane rotated around corner point = (0,0,0), 
-                                                      //  it's a triangle with hypotenuse = pt_mm.x, 
-                                                      //  corner point = (0, pt_mm.z), and opposite side = dz, 
-                                                      //  adjacent side = cx (aka (x - dx), dx is the amount x is to be shifted) 
-      cy = Math.sqrt((pt_mm.y * pt_mm.y) - (dz * dz))
     } else {
       console.log(this.formatPt(pt_mm), 'normal.z is zero', this.formatPt(points[0]), this.formatPt(points[1]), this.formatPt(points[2]))
     }
     return {
-      x: Units.convert(cx, Units.MILLIMETERS, input_units),
-      y: Units.convert(cy, Units.MILLIMETERS, input_units),
+      x: Units.convert(pt_mm.x, Units.MILLIMETERS, input_units),
+      y: Units.convert(pt_mm.y, Units.MILLIMETERS, input_units),
       z: Units.convert(pt_mm.z + dz, Units.MILLIMETERS, input_units)
     }
   }
@@ -477,12 +470,12 @@ module.exports = class Autolevel {
                 if (p0_initialized) {
                     let segs = this.splitToSegments(p0, pt)
                     for (let seg of segs) {
-                      let cpt = this.compensateXYZCoord(seg, units)
+                      let cpt = this.compensateZCoord(seg, units)
                       let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${seg.z.toFixed(3)}`
                       result.push(newLine.trim())
                     }
                 } else {
-                    let cpt = this.compensateXYZCoord(pt, units)
+                    let cpt = this.compensateZCoord(pt, units)
                     let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${pt.z.toFixed(3)}`
                     result.push(newLine.trim())
                     p0_initialized = true
