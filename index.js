@@ -25,7 +25,7 @@ program.parse(process.argv)
 
 var options = {
   id: program.id,
-  name: program.name,
+  name: (typeof program.name == 'function') ? null : program.name,
   secret: program.secret,
   port: program.port,
   baudrate: program.baudrate,
