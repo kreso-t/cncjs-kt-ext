@@ -341,33 +341,64 @@ module.exports = class Autolevel {
     return `(x:${pt.x.toFixed(3)} y:${pt.y.toFixed(3)} z:${pt.z.toFixed(3)})`
   }
 
+
+  /**
+   * Appends point to point array only if there is a difference from last point
+   * @param {*} resArray 
+   * @param {*} pt 
+   * @returns 
+   */
+  appendPointSkipDuplicate(resArray, pt) {
+    if(resArray.length == 0) {
+      resArray.push(pt);
+      return;
+    }
+    const lastPt = resArray[resArray.length-1];
+    if(this.distanceSquared3(pt,lastPt)>1e-10) {
+      resArray.push(pt);
+    }    
+    // don't append if there is no significant movement
+  }
+
+  /**
+   * Splits the line segment to smaller segments, not larger than probing grid delta
+   * @param {*} p1 
+   * @param {*} p2 
+   * @param {*} units 
+   * @returns 
+   */
   splitToSegments(p1, p2, units) {
     let res = []
     let v = this.sub3(p2, p1) // delta
     let dist = Math.sqrt(this.distanceSquared3(p1, p2)) // distance
+
+    if(dist < 1e-10) {
+      return [];
+    }
+
     let dir = {
       x: v.x / dist,
       y: v.y / dist,
       z: v.z / dist
     } // direction vector
-    let maxSegLength = Units.convert(this.delta, Units.MILLIMETERS, units) / 2
+    let maxSegLength = Units.convert(this.delta, Units.MILLIMETERS, units) / 2    
     res.push({
       x: p1.x,
       y: p1.y,
       z: p1.z
     }) // first point
     for (let d = maxSegLength; d < dist; d += maxSegLength) {
-      res.push({
+      this.appendPointSkipDuplicate(res,{
         x: p1.x + dir.x * d,
         y: p1.y + dir.y * d,
         z: p1.z + dir.z * d
       }) // split points
     }
-    res.push({
+    this.appendPointSkipDuplicate(res,{
       x: p2.x,
       y: p2.y,
       z: p2.z
-    }) // last point
+    }) // last point    
     return res
   }
 
@@ -478,7 +509,7 @@ module.exports = class Autolevel {
                 // strip coordinates
                 lineStripped = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/gi, '')
                 if (p0_initialized) {
-                    let segs = this.splitToSegments(p0, pt)
+                    let segs = this.splitToSegments(p0, pt, units)
                     for (let seg of segs) {
                       let cpt = this.compensateZCoord(seg, units)
                       let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${seg.z.toFixed(3)}`

@@ -7,6 +7,29 @@ const path = require('path')
 const io = require('socket.io-client')
 const jwt = require('jsonwebtoken')
 const Autolevel = require('./autolevel.js')
+const http = require('http');
+
+//#region  prevent starting multiple instances
+// create Sentinel server
+let server = http.createServer(function(req, res) {
+    res.send("ok");
+});
+// make sure this server doesn't keep the process running
+server.unref();
+
+server.on('error', function(e) {
+    if (e.code === "EADDRINUSE") {
+        console.log("Can't run more than one instance");
+        process.exit(1);
+    } else {
+        console.log(e);
+    }
+});
+server.listen(8399, function() {
+   console.log("Sentinel server running")   
+});
+//#endregion prevent starting multiple instances
+
 program
   .version(pkg.version)
   .usage('-s <secret> -p <port> -id <id> -name <username> [options]')
@@ -16,7 +39,7 @@ program
   .option('-p, --port <port>', 'path or name of serial port', '/dev/ttyACM0')
   .option('-b, --baudrate <baudrate>', 'baud rate', '115200')
   .option('-c, --config <filepath>', 'set the config file', '')
-  .option('-o, --out-dir <path>', 'path to directory where to write output files, if not present output file is not written to disk', '')  
+  .option('-o, --out-dir <path>', 'path to directory where to write output files, if not present output file is not written to disk', '')
   .option('--socket-address <address>', 'socket address or hostname', 'localhost')
   .option('--socket-port <port>', 'socket port', '8000')
   .option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG', 'Grbl')
@@ -104,13 +127,18 @@ if (!options.secret) {
   }
 }
 
-if(!options.id && !options.name) {
+if (!options.id && !options.name) {
   try {
     if (!config) {
       config = JSON.parse(fs.readFileSync(cncrc, 'utf8'))
     }
-    options.id = config.users[0].id
-    options.name = config.users[0].name
+    if (config.users) {
+      options.id = config.users[0].id
+      options.name = config.users[0].name
+    } else {
+      options.id = undefined;
+      options.name = undefined;
+    }
   } catch (err) {
     console.error(err)
     process.exit(1)
@@ -158,12 +186,12 @@ socket.on('serialport:error', function (options) {
 })
 
 // eslint-disable-next-line handle-callback-err
-function callback (err, socket) {
+function callback(err, socket) {
 
   if (err) {
     // SOME kind of error handling if an error occurs
     throw err;
-  }  
+  }
 
   let autolevel = new Autolevel(socket, options)
   socket.on('serialport:write', function (data, context) {
@@ -176,12 +204,12 @@ function callback (err, socket) {
       let startNdx = data.indexOf('PROBEOPEN') + 9;
       let endParen = data.indexOf(')');
       if (endParen > 0) {
-         let fileName = data.substring(startNdx, endParen).trim();
-         autolevel.fileOpen(fileName);
+        let fileName = data.substring(startNdx, endParen).trim();
+        autolevel.fileOpen(fileName);
       }
     } else if (data.indexOf('PROBECLOSE') > 0) {
-         console.log('Probe file close command');
-         autolevel.fileClose();
+      console.log('Probe file close command');
+      autolevel.fileClose();
     }
     else {
       autolevel.updateContext(context)
