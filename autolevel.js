@@ -30,6 +30,7 @@ module.exports = class Autolevel {
     this.gcodeFileName = ''
     this.gcode = ''
     this.sckw = new SocketWrap(socket, options.port)
+    this.outDir = options.outDir;
     this.delta = 10.0 // step
     this.feed = 50 // probing feedrate
     this.height = 2 // travelling height
@@ -424,9 +425,11 @@ module.exports = class Autolevel {
   }
 
   applyCompensation() {
-    this.sckw.sendGcode(`(AL: applying compensation ...)`)
-    console.log('apply leveling')
+    this.sckw.sendGcode(`(AL: applying ...)\n`)
+    
+    console.log('applying compensation ...')
     try {
+      
       let lines = this.gcode.split('\n')
       let p0 = {
         x: 0,
@@ -443,7 +446,14 @@ module.exports = class Autolevel {
       let abs = true
       let units = Units.MILLIMETERS
       let result = []
-      lines.forEach(line => {
+      let lc =0;
+      lines.forEach(line => {        
+        
+        if(lc % 1000 === 0) {
+          console.log(`progress info ... line: ${lc}/${lines.length}`);        
+          this.sckw.sendGcode(`(AL: progress ...  ${lc}/${lines.length})`)
+        }
+        lc++;
         let lineStripped = this.stripComments(line)
         if (/(G38.+|G5.+|G10|G4.+|G92|G92.1)/gi.test(lineStripped)) result.push(lineStripped) // skip compensation for these G-Codes
         else {
@@ -494,10 +504,19 @@ module.exports = class Autolevel {
       })
       const newgcodeFileName = alFileNamePrefix + this.gcodeFileName;
       this.sckw.sendGcode(`(AL: loading new gcode ${newgcodeFileName} ...)`)
-      this.sckw.loadGcode(newgcodeFileName, result.join('\n'))
+      console.log(`AL: loading new gcode ${newgcodeFileName} ...)`)
+      const outputGCode = result.join('\n');
+      this.sckw.loadGcode(newgcodeFileName, outputGCode )
+      if(this.outDir) {
+        const outputFile = this.outDir + "/" + newgcodeFileName;
+        fs.writeFileSync(outputFile,outputGCode);
+        this.sckw.sendGcode(`(AL: output file written to ${outputFile})`);
+        console.log(`output file written to ${outputFile}`);
+      }
       this.sckw.sendGcode(`(AL: finished)`)
     } catch (x) {
       this.sckw.sendGcode(`(AL: error occurred ${x})`)
+      console.log(`error occurred ${x}`)
     }
     console.log('Leveling applied')
   }

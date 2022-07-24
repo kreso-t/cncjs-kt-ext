@@ -6,7 +6,7 @@ module.exports = class SocketWrap {
 
   sendGcode (gcode) {
     // console.log('sending gcode:', gcode);
-    this.socket.emit('command', this.port, 'gcode', gcode)
+    this.socket.emit('command', this.port, 'gcode', gcode)    
   }
 
   loadGcode (name, gcode) {

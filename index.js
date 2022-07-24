@@ -16,6 +16,7 @@ program
   .option('-p, --port <port>', 'path or name of serial port', '/dev/ttyACM0')
   .option('-b, --baudrate <baudrate>', 'baud rate', '115200')
   .option('-c, --config <filepath>', 'set the config file', '')
+  .option('-o, --out-dir <path>', 'path to directory where to write output files, if not present output file is not written to disk', '')  
   .option('--socket-address <address>', 'socket address or hostname', 'localhost')
   .option('--socket-port <port>', 'socket port', '8000')
   .option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG', 'Grbl')
@@ -30,6 +31,7 @@ var options = {
   port: program.port,
   baudrate: program.baudrate,
   config: program.config,
+  outDir: program.outDir,
   socketAddress: program.socketAddress,
   socketPort: program.socketPort,
   controllerType: program.controllerType,
@@ -41,6 +43,7 @@ var defaults = {
   port: '/dev/ttyACM0',
   baudrate: 115200,
   socketAddress: 'localhost',
+  outDir: '',
   socketPort: 8000,
   controllerType: 'Grbl',
   accessTokenLifetime: '30d'
@@ -146,7 +149,7 @@ socket.on('serialport:open', function (options) {
   options = options || {}
 
   console.log('Connected to port "' + options.port + '" (Baud rate: ' + options.baudrate + ')')
-
+  socket.emit('command', options.port, 'gcode', '(AL: connected)');
   callback(null, socket)
 })
 
