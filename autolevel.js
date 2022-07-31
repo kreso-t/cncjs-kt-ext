@@ -7,20 +7,20 @@ const alFileNamePrefix = '#AL:'
 const DEFAULT_PROBE_FILE = '__last_Z_probe.txt';
 
 const Units = {
-    MILLIMETERS: 1,
-    INCHES: 2,
+  MILLIMETERS: 1,
+  INCHES: 2,
 
-    convert: function(value, in_units, out_units) {
-        if (in_units == out_units) {
-            return value;
-        }
-        if (in_units == this.MILLIMETERS && out_units == this.INCHES) {
-            return value / 25.4;
-        }
-        if (in_units == this.INCHES && out_units == this.MILLIMETERS) {
-            return value * 25.4;
-        }
+  convert: function (value, in_units, out_units) {
+    if (in_units == out_units) {
+      return value;
     }
+    if (in_units == this.MILLIMETERS && out_units == this.INCHES) {
+      return value / 25.4;
+    }
+    if (in_units == this.INCHES && out_units == this.MILLIMETERS) {
+      return value * 25.4;
+    }
+  }
 }
 
 Object.freeze(Units);
@@ -48,32 +48,32 @@ module.exports = class Autolevel {
 
     // Try to read in any pre-existing probe data...
     fs.readFile(DEFAULT_PROBE_FILE, 'utf8', (err, data) => {
-        if (!err) {
-           try {
-            console.log(`Loading previous probe from ${DEFAULT_PROBE_FILE}`)
-            this.probedPoints = [];
-            let lines = data.split('\n');
-            let pnum = 0;
-            lines.forEach(line => {
-                let vals = line.split(' ');
-                if (vals.length >= 3) {
-                  let pt = {
-                    x: parseFloat(vals[0]),
-                    y: parseFloat(vals[1]),
-                    z: parseFloat(vals[2])
-                  };
-                  this.probedPoints.push(pt);
-                  pnum++;
-                  console.log(`point ${pnum} X:${pt.x} Y:${pt.y} Z:${pt.z}`);
-                }
-            });
-            console.log(`Read ${this.probedPoints.length} probed points from previous session`);
-          }
-          catch (err2) {
-              this.probedPoints = [];
-              console.log(`Failed to read probed points from prevoius session: ${err2}`);
-          }
+      if (!err) {
+        try {
+          console.log(`Loading previous probe from ${DEFAULT_PROBE_FILE}`)
+          this.probedPoints = [];
+          let lines = data.split('\n');
+          let pnum = 0;
+          lines.forEach(line => {
+            let vals = line.split(' ');
+            if (vals.length >= 3) {
+              let pt = {
+                x: parseFloat(vals[0]),
+                y: parseFloat(vals[1]),
+                z: parseFloat(vals[2])
+              };
+              this.probedPoints.push(pt);
+              pnum++;
+              console.log(`point ${pnum} X:${pt.x} Y:${pt.y} Z:${pt.z}`);
+            }
+          });
+          console.log(`Read ${this.probedPoints.length} probed points from previous session`);
         }
+        catch (err2) {
+          this.probedPoints = [];
+          console.log(`Failed to read probed points from prevoius session: ${err2}`);
+        }
+      }
     });
 
     socket.on('gcode:load', (file, gc) => {
@@ -108,13 +108,13 @@ module.exports = class Autolevel {
           }
 
           if (this.planedPointCount > 0) {
-            if(this.probedPoints.length ===0) {
+            if (this.probedPoints.length === 0) {
               this.min_dz = pt.z;
               this.max_dz = pt.z;
               this.sum_dz = pt.z;
             } else {
-              if(pt.z < this.min_dz) this.min_dz = pt.z;
-              if(pt.z > this.max_dz) this.max_dz = pt.z;
+              if (pt.z < this.min_dz) this.min_dz = pt.z;
+              if (pt.z > this.max_dz) this.max_dz = pt.z;
               this.sum_dz += pt.z;
             }
             this.probedPoints.push(pt)
@@ -127,10 +127,10 @@ module.exports = class Autolevel {
                 this.fileClose();
               }
               if (!this.probeOnly) {
-                 this.applyCompensation()
+                this.applyCompensation()
               }
               this.planedPointCount = 0
-              this.wco = { x: 0, y: 0, z: 0 }              
+              this.wco = { x: 0, y: 0, z: 0 }
             }
           }
         }
@@ -141,31 +141,31 @@ module.exports = class Autolevel {
   }
 
   fileOpen(fileName) {
-     try {
-        this.probeFile = fs.openSync(fileName, "w");
-        console.log(`Opened probe file ${fileName}`);
-        this.sckw.sendGcode(`(AL: Opened probe file ${fileName})`)        
-     }
-     catch (err) {
-        this.probeFile = 0;
-        this.sckw.sendGcode(`(AL: Could not open probe file ${err})`)
-     }
+    try {
+      this.probeFile = fs.openSync(fileName, "w");
+      console.log(`Opened probe file ${fileName}`);
+      this.sckw.sendGcode(`(AL: Opened probe file ${fileName})`)
+    }
+    catch (err) {
+      this.probeFile = 0;
+      this.sckw.sendGcode(`(AL: Could not open probe file ${err})`)
+    }
   }
 
   fileClose() {
-      if (this.probeFile) {
-        console.log('Closing probe file');
-        fs.closeSync(this.probeFile);
-         this.probeFile = 0;
-      }
+    if (this.probeFile) {
+      console.log('Closing probe file');
+      fs.closeSync(this.probeFile);
+      this.probeFile = 0;
+    }
   }
 
-  reapply(cmd,context) {
+  reapply(cmd, context) {
     if (!this.gcode) {
       this.sckw.sendGcode('(AL: no gcode loaded)')
       return
     }
-    if(this.probedPoints.length<3) {
+    if (this.probedPoints.length < 3) {
       this.sckw.sendGcode('(AL: no previous autolevel points)')
       return;
     }
@@ -185,7 +185,7 @@ module.exports = class Autolevel {
     if (!this.gcode) {
       this.sckw.sendGcode('(AL: no gcode loaded)')
       if (!this.probeOnly) {
-         return
+        return
       }
     }
 
@@ -206,7 +206,7 @@ module.exports = class Autolevel {
     let f = /F([\.\+\-\d]+)/gi.exec(cmd)
     if (f) this.feed = parseFloat(f[1])
 
-    let margin = this.delta/4;
+    let margin = this.delta / 4;
 
     let mg = /M([\.\+\-\d]+)/gi.exec(cmd)
     if (mg) margin = parseFloat(mg[1])
@@ -221,7 +221,7 @@ module.exports = class Autolevel {
 
     let area;
     if (xSize) {
-       area = `(${xSize}, ${ySize})`
+      area = `(${xSize}, ${ySize})`
     }
     else {
       area = 'Not specified'
@@ -240,21 +240,21 @@ module.exports = class Autolevel {
 
     let xmin, xmax, ymin, ymax;
     if (xSize) {
-       xmin = margin;
-       xmax = xSize - margin;
+      xmin = margin;
+      xmax = xSize - margin;
     }
     else {
-       xmin = context.xmin + margin;
-       xmax = context.xmax - margin;
+      xmin = context.xmin + margin;
+      xmax = context.xmax - margin;
     }
 
     if (ySize) {
-       ymin = margin;
-       ymax = ySize - margin;
+      ymin = margin;
+      ymax = ySize - margin;
     }
     else {
-       ymin = context.ymin + margin;
-       ymax = context.ymax - margin;
+      ymin = context.ymin + margin;
+      ymax = context.ymax - margin;
     }
 
     let dx = (xmax - xmin) / parseInt((xmax - xmin) / this.delta)
@@ -264,7 +264,7 @@ module.exports = class Autolevel {
     code.push(`G90`)
     code.push(`G0 Z${this.height}`)
     code.push(`G0 X${xmin.toFixed(3)} Y${ymin.toFixed(3)} Z${this.height}`)
-    code.push(`G38.2 Z-${this.height+1} F${this.feed / 2}`)
+    code.push(`G38.2 Z-${this.height + 1} F${this.feed / 2}`)
     code.push(`G10 L20 P1 Z0`) // set the z zero
     code.push(`G0 Z${this.height}`)
     this.planedPointCount++
@@ -282,7 +282,7 @@ module.exports = class Autolevel {
         if (x > xmax) x = xmax
         code.push(`(AL: probing point ${this.planedPointCount + 1})`)
         code.push(`G90 G0 X${x.toFixed(3)} Y${y.toFixed(3)} Z${this.height}`)
-        code.push(`G38.2 Z-${this.height+1} F${this.feed}`)
+        code.push(`G38.2 Z-${this.height + 1} F${this.feed}`)
         code.push(`G0 Z${this.height}`)
         this.planedPointCount++
       }
@@ -291,15 +291,15 @@ module.exports = class Autolevel {
   }
 
   updateContext(context) {
-      if (this.wco.z != 0 &&
-          context.mposz !== undefined &&
-          context.posz !== undefined) {
-          let wcoz = context.mposz - context.posz;
-          if (Math.abs(this.wco.z - wcoz) > 0.00001) {
-             this.wco.z = wcoz;
-             console.log('WARNING: WCO Z offset drift detected! wco.z is now: ' + this.wco.z);
-          }
+    if (this.wco.z != 0 &&
+      context.mposz !== undefined &&
+      context.posz !== undefined) {
+      let wcoz = context.mposz - context.posz;
+      if (Math.abs(this.wco.z - wcoz) > 0.00001) {
+        this.wco.z = wcoz;
+        console.log('WARNING: WCO Z offset drift detected! wco.z is now: ' + this.wco.z);
       }
+    }
   }
 
   stripComments(line) {
@@ -349,14 +349,14 @@ module.exports = class Autolevel {
    * @returns 
    */
   appendPointSkipDuplicate(resArray, pt) {
-    if(resArray.length == 0) {
+    if (resArray.length == 0) {
       resArray.push(pt);
       return;
     }
-    const lastPt = resArray[resArray.length-1];
-    if(this.distanceSquared3(pt,lastPt)>1e-10) {
+    const lastPt = resArray[resArray.length - 1];
+    if (this.distanceSquared3(pt, lastPt) > 1e-10) {
       resArray.push(pt);
-    }    
+    }
     // don't append if there is no significant movement
   }
 
@@ -372,7 +372,7 @@ module.exports = class Autolevel {
     let v = this.sub3(p2, p1) // delta
     let dist = Math.sqrt(this.distanceSquared3(p1, p2)) // distance
 
-    if(dist < 1e-10) {
+    if (dist < 1e-10) {
       return [];
     }
 
@@ -381,20 +381,20 @@ module.exports = class Autolevel {
       y: v.y / dist,
       z: v.z / dist
     } // direction vector
-    let maxSegLength = Units.convert(this.delta, Units.MILLIMETERS, units) / 2    
+    let maxSegLength = Units.convert(this.delta, Units.MILLIMETERS, units) / 2
     res.push({
       x: p1.x,
       y: p1.y,
       z: p1.z
     }) // first point
     for (let d = maxSegLength; d < dist; d += maxSegLength) {
-      this.appendPointSkipDuplicate(res,{
+      this.appendPointSkipDuplicate(res, {
         x: p1.x + dir.x * d,
         y: p1.y + dir.y * d,
         z: p1.z + dir.z * d
       }) // split points
     }
-    this.appendPointSkipDuplicate(res,{
+    this.appendPointSkipDuplicate(res, {
       x: p2.x,
       y: p2.y,
       z: p2.z
@@ -429,9 +429,9 @@ module.exports = class Autolevel {
   compensateZCoord(pt_in_or_mm, input_units) {
 
     let pt_mm = {
-        x: Units.convert(pt_in_or_mm.x, input_units, Units.MILLIMETERS),
-        y: Units.convert(pt_in_or_mm.y, input_units, Units.MILLIMETERS),
-        z: Units.convert(pt_in_or_mm.z, input_units, Units.MILLIMETERS)
+      x: Units.convert(pt_in_or_mm.x, input_units, Units.MILLIMETERS),
+      y: Units.convert(pt_in_or_mm.y, input_units, Units.MILLIMETERS),
+      z: Units.convert(pt_in_or_mm.z, input_units, Units.MILLIMETERS)
     }
 
     let points = this.getThreeClosestPoints(pt_mm)
@@ -457,10 +457,10 @@ module.exports = class Autolevel {
 
   applyCompensation() {
     this.sckw.sendGcode(`(AL: applying ...)\n`)
-    
+
     console.log('applying compensation ...')
     try {
-      
+
       let lines = this.gcode.split('\n')
       let p0 = {
         x: 0,
@@ -477,25 +477,27 @@ module.exports = class Autolevel {
       let abs = true
       let units = Units.MILLIMETERS
       let result = []
-      let lc =0;
-      lines.forEach(line => {        
-        
-        if(lc % 1000 === 0) {
-          console.log(`progress info ... line: ${lc}/${lines.length}`);        
+      let lc = 0;
+      lines.forEach(line => {
+        if (lc % 1000 === 0) {
+          console.log(`progress info ... line: ${lc}/${lines.length}`);
           this.sckw.sendGcode(`(AL: progress ...  ${lc}/${lines.length})`)
         }
         lc++;
-        let lineStripped = this.stripComments(line)
-        if (/(G38.+|G5.+|G10|G4.+|G92|G92.1)/gi.test(lineStripped)) result.push(lineStripped) // skip compensation for these G-Codes
-        else {
-          if (/G91/i.test(lineStripped)) abs = false
-          if (/G90/i.test(lineStripped)) abs = true
-          if (/G20/i.test(lineStripped)) units = Units.INCHES
-          if (/G21/i.test(lineStripped)) units = Units.MILLIMETERS
+        if (line.match(/^\s*\([^\)]*\)\s*$/g)) { // if whole line is a comment, copy it to output and skip to next line 
+          result.push(line.trim());
+        } else {
+          let lineStripped = this.stripComments(line)
+          if (/(G38.+|G5.+|G10|G4.+|G92|G92.1)/gi.test(lineStripped)) result.push(lineStripped) // skip compensation for these G-Codes
+          else {
+            if (/G91/i.test(lineStripped)) abs = false
+            if (/G90/i.test(lineStripped)) abs = true
+            if (/G20/i.test(lineStripped)) units = Units.INCHES
+            if (/G21/i.test(lineStripped)) units = Units.MILLIMETERS
 
-          if (!/(X|Y|Z)/gi.test(lineStripped)) {
+            if (!/(X|Y|Z)/gi.test(lineStripped)) {
               result.push(lineStripped) // no coordinate change --> copy to output
-          } else {
+            } else {
               let xMatch = /X([\.\+\-\d]+)/gi.exec(lineStripped)
               if (xMatch) pt.x = parseFloat(xMatch[1])
 
@@ -509,17 +511,17 @@ module.exports = class Autolevel {
                 // strip coordinates
                 lineStripped = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/gi, '')
                 if (p0_initialized) {
-                    let segs = this.splitToSegments(p0, pt, units)
-                    for (let seg of segs) {
-                      let cpt = this.compensateZCoord(seg, units)
-                      let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${seg.z.toFixed(3)}`
-                      result.push(newLine.trim())
-                    }
-                } else {
-                    let cpt = this.compensateZCoord(pt, units)
-                    let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${pt.z.toFixed(3)}`
+                  let segs = this.splitToSegments(p0, pt, units)
+                  for (let seg of segs) {
+                    let cpt = this.compensateZCoord(seg, units)
+                    let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${seg.z.toFixed(3)}`
                     result.push(newLine.trim())
-                    p0_initialized = true
+                  }
+                } else {
+                  let cpt = this.compensateZCoord(pt, units)
+                  let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${pt.z.toFixed(3)}`
+                  result.push(newLine.trim())
+                  p0_initialized = true
                 }
               } else {
                 result.push(lineStripped)
@@ -530,6 +532,7 @@ module.exports = class Autolevel {
                 y: pt.y,
                 z: pt.z
               } // clone
+            }
           }
         }
       })
@@ -537,10 +540,10 @@ module.exports = class Autolevel {
       this.sckw.sendGcode(`(AL: loading new gcode ${newgcodeFileName} ...)`)
       console.log(`AL: loading new gcode ${newgcodeFileName} ...)`)
       const outputGCode = result.join('\n');
-      this.sckw.loadGcode(newgcodeFileName, outputGCode )
-      if(this.outDir) {
+      this.sckw.loadGcode(newgcodeFileName, outputGCode)
+      if (this.outDir) {
         const outputFile = this.outDir + "/" + newgcodeFileName;
-        fs.writeFileSync(outputFile,outputGCode);
+        fs.writeFileSync(outputFile, outputGCode);
         this.sckw.sendGcode(`(AL: output file written to ${outputFile})`);
         console.log(`output file written to ${outputFile}`);
       }
