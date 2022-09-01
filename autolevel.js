@@ -527,7 +527,9 @@ module.exports = class Autolevel {
 
         if (/G91/gi.test(lineStripped)) abs = false
         if (/G90/gi.test(lineStripped)) abs = true
-
+        if (/G20/i.test(lineStripped)) units = Units.INCHES
+        if (/G21/i.test(lineStripped)) units = Units.MILLIMETERS
+          
         if (/G0/gi.test(lineStripped)) gCodeMode = GCodeModal.LINEAR.RAPID
 
         if (/G1/gi.test(lineStripped)) gCodeMode = GCodeModal.LINEAR.FEED
