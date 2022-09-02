@@ -75,7 +75,13 @@ module.exports = class Autolevel {
         }
       }
     });
+    this.wpos = {
+      x: 0,
+      y: 0,
+      z: 0
+    }
 
+    this.decimals = 3
     socket.on('gcode:load', (file, gc) => {
       if (!file.startsWith(alFileNamePrefix)) {
         this.gcodeFileName = file
@@ -118,11 +124,9 @@ module.exports = class Autolevel {
               this.sum_dz += pt.z;
             }
             this.probedPoints.push(pt)
-
-            console.log('probed ' + this.probedPoints.length + '/' + this.planedPointCount + '>', pt.x.toFixed(3), pt.y.toFixed(3), pt.z.toFixed(3))
-            // send info to console
+            console.log('probed ' + this.probedPoints.length + '/' + this.planedPointCount + '>', pt.x.toFixed(this.decimals), pt.y.toFixed(this.decimals), pt.z.toFixed(this.decimals))
             if (this.probedPoints.length >= this.planedPointCount) {
-              this.sckw.sendGcode(`(AL: dz_min=${this.min_dz.toFixed(3)}, dz_max=${this.max_dz.toFixed(3)}, dz_avg=${(this.sum_dz / this.probedPoints.length).toFixed(3)})`);
+              this.sckw.sendGcode(`(AL: dz_min=${this.min_dz.toFixed(this.decimals)}, dz_max=${this.max_dz.toFixed(this.decimals)}, dz_avg=${(this.sum_dz / this.probedPoints.length).toFixed(this.decimals)})`);
               if (this.probeFile) {
                 this.fileClose();
               }
@@ -211,7 +215,6 @@ module.exports = class Autolevel {
     let mg = /M([\.\+\-\d]+)/gi.exec(cmd)
     if (mg) margin = parseFloat(mg[1])
 
-
     let xSize, ySize;
     let xs = /X([\.\+\-\d]+)/gi.exec(cmd)
     if (xs) xSize = parseFloat(xs[1])
@@ -233,6 +236,13 @@ module.exports = class Autolevel {
       y: context.mposy - context.posy,
       z: context.mposz - context.posz
     }
+
+    this.wpos = {
+      x: context.posx,
+      y: context.posy,
+      z: context.posz
+    }
+
     this.probedPoints = []
     this.planedPointCount = 0
     console.log('WCO:', this.wco)
@@ -263,7 +273,7 @@ module.exports = class Autolevel {
     code.push(`G21`)
     code.push(`G90`)
     code.push(`G0 Z${this.height}`)
-    code.push(`G0 X${xmin.toFixed(3)} Y${ymin.toFixed(3)} Z${this.height}`)
+    code.push(`G0 X${xmin.toFixed(this.decimals)} Y${ymin.toFixed(this.decimals)} Z${this.height}`)
     code.push(`G38.2 Z-${this.height + 1} F${this.feed / 2}`)
     code.push(`G10 L20 P1 Z0`) // set the z zero
     code.push(`G0 Z${this.height}`)
@@ -281,8 +291,8 @@ module.exports = class Autolevel {
         x += dx
         if (x > xmax) x = xmax
         code.push(`(AL: probing point ${this.planedPointCount + 1})`)
-        code.push(`G90 G0 X${x.toFixed(3)} Y${y.toFixed(3)} Z${this.height}`)
-        code.push(`G38.2 Z-${this.height + 1} F${this.feed}`)
+        code.push(`G90 G0 X${x.toFixed(this.decimals)} Y${y.toFixed(this.decimals)} Z${this.height}`)
+        code.push(`G38.2 Z-${this.height} F${this.feed}`)
         code.push(`G0 Z${this.height}`)
         this.planedPointCount++
       }
@@ -338,7 +348,7 @@ module.exports = class Autolevel {
   }
 
   formatPt(pt) {
-    return `(x:${pt.x.toFixed(3)} y:${pt.y.toFixed(3)} z:${pt.z.toFixed(3)})`
+    return `(x:${pt.x.toFixed(this.decimals)} y:${pt.y.toFixed(this.decimals)} z:${pt.z.toFixed(this.decimals)})`
   }
 
 
@@ -402,6 +412,22 @@ module.exports = class Autolevel {
     return res
   }
 
+  splitCircleToArcs(p1, p2, pc) {
+    let res = []
+    // res.push({
+    //   x: p1.x,
+    //   y: p1.y,
+    //   z: p1.z
+    // }) // first point
+
+    res.push({
+      x: p2.x,
+      y: p2.y,
+      z: p2.z
+    }) // last point
+    return res
+  }
+
   // Argument is assumed to be in millimeters.
   getThreeClosestPoints(pt) {
     let res = []
@@ -455,6 +481,15 @@ module.exports = class Autolevel {
     }
   }
 
+  clonePoint(p){
+    let pc = {
+            x: p.x,
+            y: p.y,
+            z: p.z
+            }
+    return pc
+  }
+    
   applyCompensation() {
     this.sckw.sendGcode(`(AL: applying ...)\n`)
 
@@ -462,79 +497,128 @@ module.exports = class Autolevel {
     try {
 
       let lines = this.gcode.split('\n')
-      let p0 = {
-        x: 0,
-        y: 0,
-        z: 0
+
+      let p0 = this.clonePoint(this.wpos)
+      let pt = this.clonePoint(p0)
+
+
+      const GCodeModal = {
+        LINEAR : {
+                  RAPID:  0,
+                  FEED: 1
+        },
+        ARC : {
+                  CW:     2,
+                  CCW:    3
+              }
       }
-      let p0_initialized = false
-      let pt = {
-        x: 0,
-        y: 0,
-        z: 0
-      }
+
+      let gCodeMode = 0
+
 
       let abs = true
       let units = Units.MILLIMETERS
       let result = []
       let lc = 0;
       lines.forEach(line => {
-        if (lc % 1000 === 0) {
-          console.log(`progress info ... line: ${lc}/${lines.length}`);
-          this.sckw.sendGcode(`(AL: progress ...  ${lc}/${lines.length})`)
-        }
-        lc++;
-        if (line.match(/^\s*\([^\)]*\)\s*$/g)) { // if whole line is a comment, copy it to output and skip to next line 
-          result.push(line.trim());
-        } else {
-          let lineStripped = this.stripComments(line)
-          if (/(G38.+|G5.+|G10|G4.+|G92|G92.1)/gi.test(lineStripped)) result.push(lineStripped) // skip compensation for these G-Codes
-          else {
-            if (/G91/i.test(lineStripped)) abs = false
-            if (/G90/i.test(lineStripped)) abs = true
-            if (/G20/i.test(lineStripped)) units = Units.INCHES
-            if (/G21/i.test(lineStripped)) units = Units.MILLIMETERS
 
-            if (!/(X|Y|Z)/gi.test(lineStripped)) {
-              result.push(lineStripped) // no coordinate change --> copy to output
-            } else {
-              let xMatch = /X([\.\+\-\d]+)/gi.exec(lineStripped)
-              if (xMatch) pt.x = parseFloat(xMatch[1])
+          console.log (`line ${line}`);  
+        let lineStripped = this.stripComments(line)
 
-              let yMatch = /Y([\.\+\-\d]+)/gi.exec(lineStripped)
-              if (yMatch) pt.y = parseFloat(yMatch[1])
+        if (/G91/gi.test(lineStripped)) abs = false
+        if (/G90/gi.test(lineStripped)) abs = true
+        if (/G20/i.test(lineStripped)) units = Units.INCHES
+        if (/G21/i.test(lineStripped)) units = Units.MILLIMETERS
+          
+        if (/G0/gi.test(lineStripped)) gCodeMode = GCodeModal.LINEAR.RAPID
 
-              let zMatch = /Z([\.\+\-\d]+)/gi.exec(lineStripped)
-              if (zMatch) pt.z = parseFloat(zMatch[1])
+        if (/G1/gi.test(lineStripped)) gCodeMode = GCodeModal.LINEAR.FEED
 
-              if (abs) {
-                // strip coordinates
-                lineStripped = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/gi, '')
-                if (p0_initialized) {
-                  let segs = this.splitToSegments(p0, pt, units)
-                  for (let seg of segs) {
-                    let cpt = this.compensateZCoord(seg, units)
-                    let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${seg.z.toFixed(3)}`
-                    result.push(newLine.trim())
-                  }
-                } else {
-                  let cpt = this.compensateZCoord(pt, units)
-                  let newLine = lineStripped + ` X${cpt.x.toFixed(3)} Y${cpt.y.toFixed(3)} Z${cpt.z.toFixed(3)} ; Z${pt.z.toFixed(3)}`
-                  result.push(newLine.trim())
-                  p0_initialized = true
+        if (/G2/gi.test(lineStripped)) gCodeMode = GCodeModal.ARC.CW
+
+        if (/G3/gi.test(lineStripped)) gCodeMode = GCodeModal.ARC.CCW
+
+        let doNotTouchGCode = /G38.+|G5.+|G10|G4.+|G92|G92.1/gi.test(lineStripped)
+
+        if( abs && (!doNotTouchGCode)){
+          
+          let xMatch = /X([\.\+\-\d]+)/gi.exec(lineStripped)
+          if (xMatch) pt.x = parseFloat(xMatch[1])
+  
+          let yMatch = /Y([\.\+\-\d]+)/gi.exec(lineStripped)
+          if (yMatch) pt.y = parseFloat(yMatch[1])
+  
+          let zMatch = /Z([\.\+\-\d]+)/gi.exec(lineStripped)
+          if (zMatch) pt.z = parseFloat(zMatch[1])
+
+          let anyXYZ = xMatch || yMatch || zMatch
+
+          if (anyXYZ) {
+              
+   
+            let lineStrippedCoordRemoved = lineStripped.replace(/([XYZ])([\.\+\-\d]+)/gi, '')
+            let segs = []
+
+            switch(gCodeMode){
+
+              case GCodeModal.LINEAR.RAPID:
+                segs = [pt]
+                break
+
+              case GCodeModal.LINEAR.FEED:
+                if ( xMatch || yMatch){
+                    segs = this.splitToSegments(p0, pt, units)
                 }
-              } else {
-                result.push(lineStripped)
-                console.log('WARNING: using relative mode may not produce correct results')
-              }
-              p0 = {
-                x: pt.x,
-                y: pt.y,
-                z: pt.z
-              } // clone
+                else{
+                  segs = [pt]
+                }
+                break
+
+              case GCodeModal.ARC.CW:
+              case GCodeModal.ARC.CCW:
+
+                let centerPoint = {
+                  x: 0,
+                  y: 0,
+                  z: 0,
+                }
+  
+                let iMatch = /I([\.\+\-\d]+)/gi.exec(lineStripped)
+                if (iMatch) centerPoint.x = parseFloat(xMatch[1])
+      
+                let jMatch = /J([\.\+\-\d]+)/gi.exec(lineStripped)
+                if (jMatch) centerPoint.y = parseFloat(yMatch[1])
+    
+                segs = this.splitCircleToArcs(p0, pt, centerPoint)
+  
+                // let pMatch = /P([\.\+\-\d]+)/gi.exec(lineStripped)
+                // if (pMatch) circleConf.p = parseInt(zMatch[1])
+
+                break
+  
             }
+
+            for (let seg of segs) {
+                let cpt = this.compensateZCoord(seg, units)
+                let newLine = lineStrippedCoordRemoved + ` X${cpt.x.toFixed(this.decimals)} Y${cpt.y.toFixed(this.decimals)} Z${cpt.z.toFixed(this.decimals)} (Z${seg.z.toFixed(this.decimals)})`
+              result.push(newLine.trim())
+            }
+  
+            p0 = this.clonePoint(pt)
+            console.log('Processed: ( ' + lineStripped + ' ) -> ( ' + segs.length + ' )' )
+          }
+
+          else{
+            result.push(lineStripped + ' (ORIGINAL)')
+            console.log('WARNING: Non Touching GCODE ( ' + lineStripped + ' )' )
           }
         }
+
+        else {
+          result.push(lineStripped + ' (RELATIVE)')
+          console.log('WARNING: Using Relative Mode or Skipped ( ' + lineStripped + ' )')
+        }
+
       })
       const newgcodeFileName = alFileNamePrefix + this.gcodeFileName;
       this.sckw.sendGcode(`(AL: loading new gcode ${newgcodeFileName} ...)`)
@@ -550,7 +634,12 @@ module.exports = class Autolevel {
       this.sckw.sendGcode(`(AL: finished)`)
     } catch (x) {
       this.sckw.sendGcode(`(AL: error occurred ${x})`)
-      console.log(`error occurred ${x}`)
+        console.log(`error occurred ${x}`)
+        if (x.stack) {
+            console.log('\nStacktrace:')
+            console.log('====================')
+            console.log(x.stack);
+        }
     }
     console.log('Leveling applied')
   }
