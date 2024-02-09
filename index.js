@@ -148,6 +148,8 @@ if (!options.id && !options.name) {
 const token = generateAccessToken({ id: options.id, name: options.name }, options.secret, options.accessTokenLifetime)
 const url = 'ws://' + options.socketAddress + ':' + options.socketPort + '?token=' + token
 
+const allowed_source = ['feeder', 'client']
+
 let socket = io.connect('ws://' + options.socketAddress + ':' + options.socketPort, {
   'query': 'token=' + token
 })
@@ -195,9 +197,9 @@ function callback(err, socket) {
 
   let autolevel = new Autolevel(socket, options)
   socket.on('serialport:write', function (data, context) {
-    if (data.indexOf('#autolevel_reapply') >= 0 && context && context.source === 'feeder') {
+    if (data.indexOf('#autolevel_reapply') >= 0 && context && allowed_source.indexOf(context.source) >= 0) {
       autolevel.reapply(data, context)
-    } else if (data.indexOf('#autolevel') >= 0 && context && context.source === 'feeder') {
+    } else if (data.indexOf('#autolevel') >= 0 && context && allowed_source.indexOf(context.source) >= 0) {
       autolevel.start(data, context)
     } else if (data.indexOf('PROBEOPEN') > 0) {
       console.log(`Probe file open command: ${data}`);
