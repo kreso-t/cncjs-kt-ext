@@ -58,7 +58,7 @@ Then, by using a macro you may send the following command:
 
 Without any options it will probe the area covered by the gcode every 10 mm, with travel height at 2 mm, and probing feedrate 50 mm/min.
     
-Please, note that this command will be ignored when put inside the gcode file or type it in the console, you must run it from a macro.
+Please, note that this command will be ignored when put inside the gcode file, you must run it from a macro.
 
 Once the probing is finished, the loaded gcode will be updated to reflect probed z levels and you may run the gcode.
 
